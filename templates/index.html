@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>To-Do List</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>To-Do List</h1>
+    <form action="/add" method="post">
+        <input type="text" name="task" required>
+        <button type="submit">Add</button>
+    </form>
+    <form action="/reset" method="post" style="margin-top: 20px;">
+        <button type="submit">Reset All</button>
+    </form>
+    <ul>
+        {% for task in tasks %}
+        <li>
+            <form action="/edit" method="post" style="display: inline;">
+                <input type="hidden" name="index" value="{{ loop.index0 }}">
+                <input type="text" name="new_text" value="{{ task[0] }}" required>
+                <button type="submit">Edit</button>
+            </form>
+
+            <span>Data: {{ task[1] }} - Work: {{ task[2] }}</span>
+            <form action="/delete/{{ loop.index0 }}" method="post" style="display:inline;">
+                <button type="submit">Delete</button>
+            </form>
+
+            <form action="/toggle/{{ loop.index0 }}/data" method="post" style="display:inline;">
+                <button type="submit">Toggle Data</button>
+            </form>
+
+            <form action="/toggle/{{ loop.index0 }}/work" method="post" style="display:inline;">
+                <button type="submit">Toggle Work</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
