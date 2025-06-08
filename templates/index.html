@@ -1,42 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>To-Do List</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <meta charset="UTF-8">
+  <title>AJAX To-Do List</title>
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <h1>To-Do List</h1>
-    <form action="/add" method="post">
-        <input type="text" name="task" required>
-        <button type="submit">Add</button>
-    </form>
-    <form action="/reset" method="post" style="margin-top: 20px;">
-        <button type="submit">Reset All</button>
-    </form>
-    <ul>
-        {% for task in tasks %}
-        <li>
-            <form action="/edit" method="post" style="display: inline;">
-                <input type="hidden" name="index" value="{{ loop.index0 }}">
-                <input type="text" name="new_text" value="{{ task[0] }}" required>
-                <button type="submit">Edit</button>
-            </form>
+  <h1>To-Do List</h1>
 
-            <span>Data: {{ task[1] }} - Work: {{ task[2] }}</span>
-            <form action="/delete/{{ loop.index0 }}" method="post" style="display:inline;">
-                <button type="submit">Delete</button>
-            </form>
+  <input type="text" id="taskInput" placeholder="Enter a task">
+  <button onclick="addTask()">Add</button>
+  <button onclick="resetAll()">Reset All</button>
 
-            <form action="/toggle/{{ loop.index0 }}/data" method="post" style="display:inline;">
-                <button type="submit">Toggle Data</button>
-            </form>
+  <ul id="taskList"></ul>
 
-            <form action="/toggle/{{ loop.index0 }}/work" method="post" style="display:inline;">
-                <button type="submit">Toggle Work</button>
-            </form>
-        </li>
-        {% endfor %}
-    </ul>
+  <script>
+    async function loadTasks() {
+      const res = await fetch("/tasks");
+      const tasks = await res.json();
+      const list = document.getElementById("taskList");
+      list.innerHTML = "";
+      tasks.forEach(task => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <input type="text" value="${task.text}" onchange="editTask(${task.id}, this.value)">
+          Data: <button onclick="toggleStatus(${task.id}, 'data')">${task.data_status}</button>
+          Work: <button onclick="toggleStatus(${task.id}, 'work')">${task.work_status}</button>
+          <button onclick="deleteTask(${task.id})">🗑</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    async function addTask() {
+      const input = document.getElementById("taskInput");
+      const task = input.value.trim();
+      if (!task) return;
+
+      const res = await fetch("/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task })
+      });
+      const data = await res.json();
+      if (data.success) {
+        input.value = "";
+        loadTasks();
+      }
+    }
+
+    async function editTask(id, newText) {
+      await fetch("/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, new_text: newText })
+      });
+    }
+
+    async function deleteTask(id) {
+      await fetch(`/delete/${id}`, { method: "POST" });
+      loadTasks();
+    }
+
+    async function toggleStatus(id, column) {
+      await fetch(`/toggle/${id}/${column}`, { method: "POST" });
+      loadTasks();
+    }
+
+    async function resetAll() {
+      await fetch("/reset", { method: "POST" });
+      loadTasks();
+    }
+
+    window.onload = loadTasks;
+  </script>
 </body>
 </html>
