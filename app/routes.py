@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, render_template, request, jsonify
 from app.utils import (
     load_tasks, add_task, update_task_text, delete_task,
     toggle_task_status, reset_all_tasks
@@ -8,7 +8,7 @@ main = Blueprint("main", __name__)
 
 @main.route("/")
 def index():
-    return open("index.html").read()
+    return render_template("index.html").read()
 
 @main.route("/tasks", methods=["GET"])
 def get_tasks():
