@@ -8,7 +8,7 @@ main = Blueprint("main", __name__)
 
 @main.route("/")
 def index():
-    return render_template("index.html").read()
+    return render_template("index.html")
 
 @main.route("/tasks", methods=["GET"])
 def get_tasks():
