@@ -15,11 +15,13 @@ def get_db():
 
 def load_tasks():
     with SessionLocal() as db:
-        return db.query(Task).all()
-
+        return db.query(Task).order_by(Task.position).all()
+    
 def add_task(text):
     with SessionLocal() as db:
-        task = Task(text=text)
+        last_position = db.query(Task).order_by(Task.position.desc()).first()
+        position = last_position.position + 1 if last_position else 0
+        task = Task(text=text, position=position)
         db.add(task)
         db.commit()
         db.refresh(task)

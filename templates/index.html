@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>AJAX To-Do List</title>
+  <title>Work Organizer</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -23,10 +23,21 @@
       tasks.forEach(task => {
         const li = document.createElement("li");
         li.innerHTML = `
-          <input type="text" value="${task.text}" onchange="editTask(${task.id}, this.value)">
-          Data: <button onclick="toggleStatus(${task.id}, 'data')">${task.data_status}</button>
-          Work: <button onclick="toggleStatus(${task.id}, 'work')">${task.work_status}</button>
-          <button onclick="deleteTask(${task.id})">🗑</button>
+          <div class="task-row">
+            <input type="text" class="task-text" value="${task.text}" onchange="editTask(${task.id}, this.value)">
+            
+            <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'data', this)">
+              ${task.data_status}
+            </button>
+
+            <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'work', this)">
+              ${task.work_status}
+            </button>
+            <button onclick="moveTask(${task.id}, 'up')">⬆️</button>
+            <button onclick="moveTask(${task.id}, 'down')">⬇️</button>
+
+            <button class="delete-btn" onclick="deleteTask(${task.id})">🗑</button>
+          </div>
         `;
         list.appendChild(li);
       });
@@ -62,15 +73,33 @@
       loadTasks();
     }
 
-    async function toggleStatus(id, column) {
+    async function toggleStatus(id, column, button) {
       await fetch(`/toggle/${id}/${column}`, { method: "POST" });
-      loadTasks();
+
+      if (button.innerText === "☑") {
+        button.innerText = "☐";
+        button.classList.remove("active");
+      } else {
+        button.innerText = "☑";
+        button.classList.add("active");
+      }
     }
+
 
     async function resetAll() {
       await fetch("/reset", { method: "POST" });
       loadTasks();
     }
+
+    async function moveTask(id, direction) {
+      await fetch("/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, direction })
+      });
+      loadTasks();  // reload to reflect new order
+    }
+
 
     window.onload = loadTasks;
   </script>
