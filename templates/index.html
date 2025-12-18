@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Work Organizer</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>TaskFlow</h1>
+      <p class="subtitle">Stay organized, stay productive</p>
+    </header>
+
+    <div class="input-section">
+      <input type="text" id="taskInput" placeholder="What needs to be done?" onkeypress="handleKeyPress(event)">
+      <button class="btn-primary" onclick="addTask()">
+        <span>✦</span> Add Task
+      </button>
+      <button class="btn-secondary" onclick="resetAll()">Reset All</button>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-value" id="totalTasks">0</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="dataComplete">0</div>
+        <div class="stat-label">Data ✓</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="workComplete">0</div>
+        <div class="stat-label">Work ✓</div>
+      </div>
+    </div>
+
+    <div class="column-headers">
+      <div class="task-col">Task</div>
+      <div class="status-col">Data</div>
+      <div class="status-col">Work</div>
+      <div class="move-col">Order</div>
+      <div class="delete-col"></div>
+    </div>
+
+    <ul id="taskList"></ul>
+  </div>
+
+  <script>
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') addTask();
+    }
+
+    function updateStats(tasks) {
+      const total = tasks.length;
+      const dataComplete = tasks.filter(t => t.data_status === "☑").length;
+      const workComplete = tasks.filter(t => t.work_status === "☑").length;
+      
+      document.getElementById('totalTasks').textContent = total;
+      document.getElementById('dataComplete').textContent = dataComplete;
+      document.getElementById('workComplete').textContent = workComplete;
+    }
+
+    async function loadTasks() {
+      const res = await fetch("/tasks");
+      const tasks = await res.json();
+      const list = document.getElementById("taskList");
+      
+      updateStats(tasks);
+      
+      if (tasks.length === 0) {
+        list.innerHTML = `
+          <li>
+            <div class="empty-state">
+              <div class="empty-state-icon">📋</div>
+              <div class="empty-state-text">No tasks yet. Add one above!</div>
+            </div>
+          </li>
+        `;
+        return;
+      }
+      
+      list.innerHTML = "";
+      tasks.forEach((task, index) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div class="task-row" style="animation-delay: ${index * 0.05}s">
+            <input type="text" class="task-text" value="${escapeHtml(task.text)}" onchange="editTask(${task.id}, this.value)">
+            
+            <div class="status-group">
+              <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'data', this)" title="Data Status">
+                ${task.data_status === "☑" ? '✓' : ''}
+              </button>
+            </div>
+
+            <div class="status-group">
+              <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'work', this)" title="Work Status">
+                ${task.work_status === "☑" ? '✓' : ''}
+              </button>
+            </div>
+
+            <div class="move-buttons">
+              <button class="move-btn" onclick="moveTask(${task.id}, 'up')" title="Move Up">↑</button>
+              <button class="move-btn" onclick="moveTask(${task.id}, 'down')" title="Move Down">↓</button>
+            </div>
+
+            <button class="delete-btn" onclick="deleteTask(${task.id})" title="Delete Task">✕</button>
+          </div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function addTask() {
+      const input = document.getElementById("taskInput");
+      const task = input.value.trim();
+      if (!task) return;
+
+      const res = await fetch("/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task })
+      });
+      const data = await res.json();
+      if (data.success) {
+        input.value = "";
+        loadTasks();
+      }
+    }
+
+    async function editTask(id, newText) {
+      await fetch("/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, new_text: newText })
+      });
+    }
+
+    async function deleteTask(id) {
+      await fetch(`/delete/${id}`, { method: "POST" });
+      loadTasks();
+    }
+
+    async function toggleStatus(id, column, button) {
+      await fetch(`/toggle/${id}/${column}`, { method: "POST" });
+      
+      const isActive = button.classList.contains('active');
+      if (isActive) {
+        button.classList.remove('active');
+        button.textContent = '';
+      } else {
+        button.classList.add('active');
+        button.textContent = '✓';
+      }
+      
+      // Refresh stats
+      const res = await fetch("/tasks");
+      const tasks = await res.json();
+      updateStats(tasks);
+    }
+
+    async function resetAll() {
+      if (confirm('Reset all task statuses? This will uncheck all tasks.')) {
+        await fetch("/reset", { method: "POST" });
+        loadTasks();
+      }
+    }
+
+    async function moveTask(id, direction) {
+      await fetch("/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, direction })
+      });
+      loadTasks();
+    }
+
+    window.onload = loadTasks;
+  </script>
+</body>
+</html>
