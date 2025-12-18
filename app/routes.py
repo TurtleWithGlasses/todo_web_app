@@ -86,3 +86,18 @@ def move():
             db.commit()
     
     return jsonify({"success": True})
+
+@main.route("/reorder", methods=["POST"])
+def reorder():
+    """Update task positions based on drag-and-drop order"""
+    data = request.get_json()
+    task_ids = data.get("order", [])
+    
+    with SessionLocal() as db:
+        for position, task_id in enumerate(task_ids):
+            task = db.query(Task).filter(Task.id == task_id).first()
+            if task:
+                task.position = position
+        db.commit()
+    
+    return jsonify({"success": True})

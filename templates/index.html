@@ -37,10 +37,10 @@
     </div>
 
     <div class="column-headers">
+      <div class="drag-col"></div>
       <div class="task-col">Task</div>
       <div class="status-col">Data</div>
       <div class="status-col">Work</div>
-      <div class="move-col">Order</div>
       <div class="delete-col"></div>
     </div>
 
@@ -48,6 +48,9 @@
   </div>
 
   <script>
+    let draggedItem = null;
+    let draggedId = null;
+
     function handleKeyPress(e) {
       if (e.key === 'Enter') addTask();
     }
@@ -84,8 +87,13 @@
       list.innerHTML = "";
       tasks.forEach((task, index) => {
         const li = document.createElement("li");
+        li.setAttribute("draggable", "true");
+        li.setAttribute("data-id", task.id);
+        li.className = "task-item";
         li.innerHTML = `
           <div class="task-row" style="animation-delay: ${index * 0.05}s">
+            <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
+            
             <input type="text" class="task-text" value="${escapeHtml(task.text)}" onchange="editTask(${task.id}, this.value)">
             
             <div class="status-group">
@@ -100,16 +108,109 @@
               </button>
             </div>
 
-            <div class="move-buttons">
-              <button class="move-btn" onclick="moveTask(${task.id}, 'up')" title="Move Up">↑</button>
-              <button class="move-btn" onclick="moveTask(${task.id}, 'down')" title="Move Down">↓</button>
-            </div>
-
             <button class="delete-btn" onclick="deleteTask(${task.id})" title="Delete Task">✕</button>
           </div>
         `;
+        
+        // Drag event listeners
+        li.addEventListener('dragstart', handleDragStart);
+        li.addEventListener('dragend', handleDragEnd);
+        li.addEventListener('dragover', handleDragOver);
+        li.addEventListener('dragenter', handleDragEnter);
+        li.addEventListener('dragleave', handleDragLeave);
+        li.addEventListener('drop', handleDrop);
+        
         list.appendChild(li);
       });
+    }
+
+    // Drag and Drop handlers
+    function handleDragStart(e) {
+      draggedItem = this;
+      draggedId = this.getAttribute('data-id');
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedId);
+      
+      // Slight delay to allow the dragging class to apply before ghost image is captured
+      setTimeout(() => {
+        this.style.opacity = '0.4';
+      }, 0);
+    }
+
+    function handleDragEnd(e) {
+      this.classList.remove('dragging');
+      this.style.opacity = '1';
+      
+      // Remove all drag-over classes
+      document.querySelectorAll('.task-item').forEach(item => {
+        item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+      });
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      // Determine if we're in the top or bottom half of the element
+      const rect = this.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      
+      this.classList.remove('drag-over-top', 'drag-over-bottom');
+      if (e.clientY < midpoint) {
+        this.classList.add('drag-over-top');
+      } else {
+        this.classList.add('drag-over-bottom');
+      }
+    }
+
+    function handleDragEnter(e) {
+      e.preventDefault();
+      if (this !== draggedItem) {
+        this.classList.add('drag-over');
+      }
+    }
+
+    function handleDragLeave(e) {
+      this.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+    }
+
+    async function handleDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (this === draggedItem) return;
+      
+      const list = document.getElementById('taskList');
+      const items = [...list.querySelectorAll('.task-item')];
+      const dropTarget = this;
+      
+      // Determine position (before or after drop target)
+      const rect = this.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      const insertBefore = e.clientY < midpoint;
+      
+      // Reorder DOM
+      if (insertBefore) {
+        list.insertBefore(draggedItem, dropTarget);
+      } else {
+        list.insertBefore(draggedItem, dropTarget.nextSibling);
+      }
+      
+      // Get new order
+      const newOrder = [...list.querySelectorAll('.task-item')].map(item => 
+        parseInt(item.getAttribute('data-id'))
+      );
+      
+      // Send to server
+      await fetch('/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newOrder })
+      });
+      
+      // Clean up classes
+      this.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
     }
 
     function escapeHtml(text) {
@@ -171,15 +272,6 @@
         await fetch("/reset", { method: "POST" });
         loadTasks();
       }
-    }
-
-    async function moveTask(id, direction) {
-      await fetch("/move", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, direction })
-      });
-      loadTasks();
     }
 
     window.onload = loadTasks;
