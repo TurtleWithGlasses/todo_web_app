@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Günlük İş Takibi</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+  <style>
+    :root {
+      --bg-primary:    #0f1419;
+      --bg-secondary:  #1a1f2e;
+      --bg-card:       #232a3b;
+      --bg-card-hover: #2a3347;
+      --text-primary:  #f1f5f9;
+      --text-secondary:#94a3b8;
+      --text-muted:    #64748b;
+      --border:        rgba(255,255,255,0.08);
+      --danger:        #ef4444;
+      --success:       #10b981;
+      /* Daily page accent — teal/cyan */
+      --da:            #06b6d4;
+      --da-glow:       rgba(6,182,212,0.25);
+      --da-dim:        #0891b2;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 15% 0%,  rgba(6,182,212,0.07)  0%, transparent 50%),
+        radial-gradient(ellipse at 85% 100%, rgba(16,185,129,0.05) 0%, transparent 50%),
+        var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    button { font-family: 'Outfit', sans-serif; cursor: pointer; }
+
+    /* ── HEADER ──────────────────────────────────────────── */
+    .d-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      height: 60px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(26,31,46,0.85);
+      backdrop-filter: blur(12px);
+      flex-shrink: 0;
+    }
+
+    .d-header-left { display: flex; align-items: center; gap: 14px; }
+
+    .d-menu-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      padding: 6px 8px;
+      border-radius: 8px;
+      line-height: 1;
+      transition: color .2s;
+    }
+    .d-menu-btn:hover { color: var(--text-primary); }
+
+    .d-header h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .d-header-right { display: flex; align-items: center; gap: 8px; }
+
+    .d-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-family: 'Outfit', sans-serif;
+      font-size: .8rem;
+      font-weight: 500;
+      transition: all .2s;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .d-icon-btn:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      border-color: rgba(255,255,255,.14);
+      transform: translateY(-1px);
+    }
+    .d-icon-btn .nav-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent, #f59e0b);
+      flex-shrink: 0;
+    }
+
+    /* ── DATE NAV ─────────────────────────────────────────── */
+    .d-date-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      height: 48px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .d-date-arrow {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      padding: 2px 12px;
+      border-radius: 8px;
+      line-height: 1;
+      transition: all .2s;
+    }
+    .d-date-arrow:hover { color: var(--text-primary); background: var(--bg-card); }
+
+    #currentDateLabel {
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      min-width: 240px;
+      text-align: center;
+    }
+    /* overridden below by calendar styles */
+
+    /* ── MAIN LAYOUT ──────────────────────────────────────── */
+    .d-layout {
+      display: grid;
+      grid-template-columns: 210px 1fr 290px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── LEFT PANEL ───────────────────────────────────────── */
+    .d-left {
+      padding: 22px 16px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      overflow-y: auto;
+    }
+
+    .d-add-btn {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--da) 0%, var(--da-dim) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: .88rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all .2s;
+    }
+    .d-add-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px var(--da-glow); }
+
+    .d-section-title {
+      font-size: .68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .d-cats { display: flex; flex-wrap: wrap; gap: 7px; }
+
+    .d-cat-pill {
+      padding: 5px 13px;
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 500;
+      border: 2px solid transparent;
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      transition: all .2s;
+    }
+    .d-cat-pill:hover { color: var(--text-primary); }
+    .d-cat-pill.active { border-color: currentColor; }
+    .d-cat-pill[data-cat="Yazılım"]      { color: #06b6d4; }
+    .d-cat-pill[data-cat="Veri Analizi"] { color: #10b981; }
+    .d-cat-pill[data-cat="Kişisel"]      { color: #f59e0b; }
+    .d-cat-pill[data-cat="Toplantılar"]  { color: #a78bfa; }
+    .d-cat-pill[data-cat="all"]          { color: var(--text-secondary); }
+    .d-cat-pill[data-cat="all"].active   { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+
+    .d-priorities { display: flex; flex-direction: column; gap: 7px; }
+
+    .d-prow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 13px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: all .2s;
+      user-select: none;
+    }
+    .d-prow:hover { background: var(--bg-card-hover); }
+    .d-prow.active { border-color: var(--da); }
+
+    .d-prow-left { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 500; }
+    .d-pdot { width: 9px; height: 9px; border-radius: 50%; }
+    .dot-acil  { background: #ef4444; }
+    .dot-orta  { background: #f59e0b; }
+    .dot-dusuk { background: #64748b; }
+    .d-prow-chevron { color: var(--text-muted); font-size: .8rem; }
+
+    /* ── CENTER PANEL ─────────────────────────────────────── */
+    .d-center {
+      padding: 22px 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .d-center-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .d-center-title {
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+    }
+    .d-more-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      font-size: .9rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all .2s;
+    }
+    .d-more-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+
+    #dailyTaskList { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Task card */
+    .d-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      transition: all .25s ease;
+      animation: dSlide .3s ease;
+    }
+    @keyframes dSlide {
+      from { opacity:0; transform: translateY(-8px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .d-card:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,.12); }
+    .d-card.tamamlandı { opacity: .6; }
+    .d-card.tamamlandı .d-card-title { text-decoration: line-through; color: var(--text-muted); }
+
+    .d-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .d-card-title { font-size: .98rem; font-weight: 600; flex: 1; }
+
+    .d-status-pill {
+      font-size: .75rem;
+      font-weight: 500;
+      padding: 4px 11px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all .2s;
+    }
+    .d-status-pill:hover { filter: brightness(1.15); transform: scale(1.03); }
+    .pill-yapılacak  { background: rgba(100,116,139,.2); color: var(--text-secondary); }
+    .pill-yapılıyor  { background: rgba(6,182,212,.15);  color: #06b6d4; }
+    .pill-tamamlandı { background: rgba(16,185,129,.15); color: #10b981; }
+
+    .d-card-desc {
+      font-size: .83rem;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .d-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .d-card-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+
+    .d-time-badge {
+      display: flex; align-items: center; gap: 4px;
+      font-size: .78rem; color: var(--text-muted);
+    }
+
+    .d-tag {
+      padding: 3px 9px;
+      border-radius: 10px;
+      font-size: .73rem;
+      font-weight: 500;
+    }
+    .tag-yazılım      { background: rgba(6,182,212,.15);  color: #06b6d4; }
+    .tag-veri-analizi { background: rgba(16,185,129,.15); color: #10b981; }
+    .tag-kişisel      { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .tag-toplantılar  { background: rgba(167,139,250,.15);color: #a78bfa; }
+
+    .d-pri-tag { padding: 3px 9px; border-radius: 10px; font-size: .73rem; font-weight: 500; }
+    .pri-acil  { background: rgba(239,68,68,.15);  color: #ef4444; }
+    .pri-orta  { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .pri-düşük { background: rgba(100,116,139,.15);color: var(--text-muted); }
+
+    .d-del-btn {
+      width: 28px; height: 28px;
+      background: transparent;
+      border: none;
+      border-radius: 7px;
+      color: var(--text-muted);
+      font-size: .8rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s;
+      padding: 0;
+    }
+    .d-del-btn:hover { background: rgba(239,68,68,.12); color: #ef4444; }
+
+    .d-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .d-empty-icon { font-size: 2.8rem; margin-bottom: 12px; opacity: .4; }
+    .d-empty-text { font-size: .9rem; }
+
+    /* ── RIGHT PANEL ──────────────────────────────────────── */
+    .d-right {
+      padding: 22px 18px;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .d-right-section-title {
+      font-size: .68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* Completion ring */
+    .d-stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    .d-ring-row { display: flex; align-items: center; gap: 16px; }
+
+    .d-ring-wrap { position: relative; width: 78px; height: 78px; flex-shrink: 0; }
+
+    .d-ring-svg { width: 78px; height: 78px; }
+    .d-ring-track { fill: none; stroke: var(--bg-secondary); stroke-width: 8; }
+    .d-ring-fill  {
+      fill: none;
+      stroke: var(--da);
+      stroke-width: 8;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      transition: stroke-dashoffset .6s ease;
+    }
+    .d-ring-center {
+      position: absolute;
+      inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .d-ring-text .label {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+    }
+    .d-ring-text .value {
+      font-size: .95rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* ── POMODORO TIMER ───────────────────────────────────── */
+    .d-timer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      transition: border-color .4s;
+    }
+    .d-timer-card.mode-mola-kisa  { border-color: rgba(16,185,129,.35); }
+    .d-timer-card.mode-mola-uzun  { border-color: rgba(167,139,250,.35); }
+
+    /* Mode tabs */
+    .d-timer-modes {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-secondary);
+      border-radius: 10px;
+      padding: 3px;
+      width: 100%;
+    }
+    .d-tmode {
+      flex: 1;
+      padding: 5px 4px;
+      font-size: .7rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-muted);
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .d-tmode:hover  { color: var(--text-primary); }
+    .d-tmode.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+
+    /* Progress ring */
+    .d-pomo-ring-wrap {
+      position: relative;
+      width: 130px; height: 130px;
+    }
+    .d-pomo-svg { width: 130px; height: 130px; }
+    .d-pomo-track {
+      fill: none;
+      stroke: var(--bg-secondary);
+      stroke-width: 7;
+    }
+    .d-pomo-fill {
+      fill: none;
+      stroke: var(--da);
+      stroke-width: 7;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      transition: stroke-dashoffset .9s linear, stroke .4s;
+    }
+    .mode-mola-kisa  .d-pomo-fill { stroke: #10b981; }
+    .mode-mola-uzun  .d-pomo-fill { stroke: #a78bfa; }
+
+    .d-pomo-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .d-pomo-time {
+      font-size: 1.6rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -.02em;
+    }
+    .d-pomo-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .d-pomo-play {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--da);
+      background: transparent;
+      color: var(--da);
+      font-size: .85rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s;
+      padding: 0;
+    }
+    .d-pomo-play:hover { background: var(--da); color: #fff; }
+    .mode-mola-kisa .d-pomo-play { border-color: #10b981; color: #10b981; }
+    .mode-mola-kisa .d-pomo-play:hover { background: #10b981; color: #fff; }
+    .mode-mola-uzun .d-pomo-play { border-color: #a78bfa; color: #a78bfa; }
+    .mode-mola-uzun .d-pomo-play:hover { background: #a78bfa; color: #fff; }
+
+    .d-pomo-reset {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: .8rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s;
+      padding: 0;
+    }
+    .d-pomo-reset:hover { color: var(--text-primary); border-color: rgba(255,255,255,.2); }
+
+    /* Session dots */
+    .d-pomo-sessions {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .d-pomo-session-label {
+      font-size: .65rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+    }
+    .d-pomo-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .d-pomo-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      transition: all .3s;
+    }
+    .d-pomo-dot.done { background: var(--da); border-color: var(--da); box-shadow: 0 0 6px var(--da-glow); }
+
+    /* Trend bars */
+    .d-trend-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      flex: 1;
+    }
+    .d-trend-chart {
+      position: relative;
+    }
+    .d-trend-bars {
+      height: 80px;
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+    }
+    .d-bar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+      position: relative;
+    }
+    .d-bar {
+      width: 100%;
+      border-radius: 4px 4px 0 0;
+      background: linear-gradient(to top, var(--da), rgba(6,182,212,.3));
+      opacity: .55;
+      min-height: 4px;
+      transition: height .5s ease, opacity .2s;
+    }
+    .d-bar-wrap:hover .d-bar { opacity: 1; }
+    .d-bar-wrap.today .d-bar {
+      opacity: .95;
+      background: linear-gradient(to top, var(--da), rgba(6,182,212,.6));
+      box-shadow: 0 0 10px var(--da-glow);
+    }
+    .d-bar-wrap.empty .d-bar { opacity: .2; }
+
+    /* Tooltip */
+    .d-bar-tooltip {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 5px 9px;
+      font-size: .68rem;
+      white-space: nowrap;
+      color: var(--text-primary);
+      box-shadow: 0 4px 12px rgba(0,0,0,.4);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s;
+      z-index: 10;
+    }
+    .d-bar-wrap:hover .d-bar-tooltip { opacity: 1; }
+
+    .d-trend-labels {
+      display: flex; gap: 5px; margin-top: 6px;
+    }
+    .d-trend-day { flex: 1; text-align: center; font-size: .62rem; color: var(--text-muted); }
+    .d-trend-day.today { color: var(--da); font-weight: 600; }
+
+    /* ── MODAL ────────────────────────────────────────────── */
+    .d-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+    .d-overlay.open { opacity: 1; pointer-events: all; }
+
+    .d-modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      width: 460px;
+      max-width: 95vw;
+      transform: translateY(20px) scale(.97);
+      transition: transform .25s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .d-overlay.open .d-modal { transform: translateY(0) scale(1); }
+
+    .d-modal h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 20px; }
+
+    .d-fg { margin-bottom: 14px; }
+    .d-fl {
+      display: block;
+      font-size: .72rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+    .d-fi, .d-fs, .d-fta {
+      width: 100%;
+      padding: 11px 13px;
+      font-family: 'Outfit', sans-serif;
+      font-size: .88rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      transition: border-color .2s;
+    }
+    .d-fi:focus, .d-fs:focus, .d-fta:focus {
+      outline: none;
+      border-color: var(--da);
+    }
+    .d-fs option { background: var(--bg-card); }
+    .d-fta { resize: vertical; min-height: 68px; }
+
+    .d-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .d-modal-foot {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .d-btn-cancel {
+      padding: 9px 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: .88rem;
+      transition: all .2s;
+    }
+    .d-btn-cancel:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+
+    .d-btn-save {
+      padding: 9px 22px;
+      background: linear-gradient(135deg, var(--da) 0%, var(--da-dim) 100%);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: .88rem;
+      font-weight: 600;
+      transition: all .2s;
+    }
+    .d-btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 16px var(--da-glow); }
+
+    /* ── CALENDAR POPUP ─────────────────────────────────── */
+    #currentDateLabel {
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 3px 10px;
+      transition: background .18s, color .18s;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    #currentDateLabel:hover { background: var(--bg-card); color: var(--da); }
+    #currentDateLabel .cal-icon { font-size: .85rem; opacity: .6; }
+
+    .d-calendar-popup {
+      position: fixed;
+      top: 116px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-6px);
+      z-index: 998;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px 18px 14px;
+      width: 272px;
+      box-shadow: 0 16px 48px rgba(0,0,0,.55);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .d-calendar-popup.open {
+      opacity: 1;
+      pointer-events: all;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .d-cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .d-cal-month-label {
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .d-cal-nav {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .18s;
+      line-height: 1;
+    }
+    .d-cal-nav:hover { background: var(--bg-card); color: var(--text-primary); }
+
+    .d-cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+    .d-cal-dow {
+      text-align: center;
+      font-size: .6rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 3px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .d-cal-day {
+      text-align: center;
+      padding: 7px 2px;
+      font-size: .8rem;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all .13s;
+      color: var(--text-secondary);
+      border: 1px solid transparent;
+      line-height: 1;
+    }
+    .d-cal-day:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .d-cal-day.other-month { color: var(--text-muted); opacity: .4; }
+    .d-cal-day.today { color: var(--da); font-weight: 700; }
+    .d-cal-day.selected {
+      background: var(--da);
+      color: #fff !important;
+      font-weight: 700;
+      opacity: 1 !important;
+    }
+    .d-cal-day.today.selected { box-shadow: 0 0 10px var(--da-glow); }
+
+    /* ── CATEGORY MANAGER MODAL ──────────────────────────── */
+    .d-section-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .d-cat-edit-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: .8rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color .2s;
+      line-height: 1;
+    }
+    .d-cat-edit-btn:hover { color: var(--da); }
+
+    .d-catmgr-list { max-height: 260px; overflow-y: auto; }
+
+    .d-catmgr-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .d-catmgr-row:last-child { border-bottom: none; }
+
+    .d-catmgr-swatch {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .d-catmgr-name { flex: 1; font-size: .88rem; }
+
+    .d-catmgr-name-input {
+      flex: 1;
+      padding: 5px 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: .85rem;
+      background: var(--bg-primary);
+      border: 1px solid var(--da);
+      border-radius: 6px;
+      color: var(--text-primary);
+    }
+    .d-catmgr-name-input:focus { outline: none; }
+
+    .d-catmgr-edit-btn, .d-catmgr-del-btn {
+      width: 28px; height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      font-size: .75rem;
+      color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: all .2s;
+    }
+    .d-catmgr-edit-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .d-catmgr-del-btn:hover  { background: rgba(239,68,68,.15); border-color: var(--danger); color: var(--danger); }
+
+    .d-color-picker {
+      width: 30px; height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      padding: 2px;
+      background: var(--bg-card);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .d-catmgr-addrow {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .d-catmgr-addrow input[type="text"] {
+      flex: 1;
+      padding: 9px 12px;
+      font-family: 'Outfit', sans-serif;
+      font-size: .85rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+    }
+    .d-catmgr-addrow input[type="text"]:focus { outline: none; border-color: var(--da); }
+    .d-catmgr-add-btn {
+      padding: 9px 14px;
+      background: linear-gradient(135deg, var(--da) 0%, var(--da-dim) 100%);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: .82rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .d-catmgr-add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--da-glow); }
+
+    /* Responsive */
+    @media (max-width: 960px) {
+      .d-layout { grid-template-columns: 1fr; overflow: visible; }
+      body { overflow: auto; height: auto; }
+      .d-right { border-left: none; border-top: 1px solid var(--border); }
+      .d-left  { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="d-header">
+    <div class="d-header-left">
+      <button class="d-menu-btn">&#9776;</button>
+      <h1>Günlük İş Takibi</h1>
+    </div>
+    <div class="d-header-right">
+      <a href="/" class="d-icon-btn" title="TaskFlow — Görev Listesi">
+        <span class="nav-dot"></span> TaskFlow
+      </a>
+    </div>
+  </header>
+
+  <!-- DATE NAV -->
+  <div class="d-date-bar" style="position:relative">
+    <button class="d-date-arrow" id="btnPrev">&#8249;</button>
+    <span id="currentDateLabel" onclick="toggleCalendar()" title="Takvimi aç/kapat">
+      <span class="cal-icon">📅</span>
+      <span id="dateText"></span>
+    </span>
+    <button class="d-date-arrow" id="btnNext">&#8250;</button>
+  </div>
+
+  <!-- CALENDAR POPUP -->
+  <div class="d-calendar-popup" id="calendarPopup">
+    <div class="d-cal-header">
+      <button class="d-cal-nav" onclick="calPrevMonth()">&#8249;</button>
+      <span class="d-cal-month-label" id="calMonthLabel"></span>
+      <button class="d-cal-nav" onclick="calNextMonth()">&#8250;</button>
+    </div>
+    <div class="d-cal-grid" id="calGrid">
+      <div class="d-cal-dow">Pt</div>
+      <div class="d-cal-dow">Sa</div>
+      <div class="d-cal-dow">Ça</div>
+      <div class="d-cal-dow">Pe</div>
+      <div class="d-cal-dow">Cu</div>
+      <div class="d-cal-dow">Ct</div>
+      <div class="d-cal-dow">Pz</div>
+    </div>
+  </div>
+
+  <!-- 3-COLUMN LAYOUT -->
+  <div class="d-layout">
+
+    <!-- LEFT: Filters -->
+    <aside class="d-left">
+      <button class="d-add-btn" onclick="openModal()">
+        <span style="font-size:1.1rem;line-height:1">+</span>
+        YENİ GÖREV EKLE
+      </button>
+
+      <div>
+        <div class="d-section-title-row">
+          <div class="d-section-title">Kategoriler</div>
+          <button class="d-cat-edit-btn" onclick="openCatManager()" title="Kategorileri yönet">✏</button>
+        </div>
+        <div class="d-cats" id="catPills">
+          <!-- filled dynamically -->
+        </div>
+      </div>
+
+      <div>
+        <div class="d-section-title">Öncelik Durumu</div>
+        <div class="d-priorities">
+          <div class="d-prow" data-p="acil"  onclick="filterPriority(this)">
+            <div class="d-prow-left"><span class="d-pdot dot-acil"></span>Acil</div>
+            <span class="d-prow-chevron">&#8964;</span>
+          </div>
+          <div class="d-prow" data-p="orta"  onclick="filterPriority(this)">
+            <div class="d-prow-left"><span class="d-pdot dot-orta"></span>Orta</div>
+            <span class="d-prow-chevron">&#8964;</span>
+          </div>
+          <div class="d-prow" data-p="düşük" onclick="filterPriority(this)">
+            <div class="d-prow-left"><span class="d-pdot dot-dusuk"></span>Düşük</div>
+            <span class="d-prow-chevron">&#8964;</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER: Task list -->
+    <main class="d-center">
+      <div class="d-center-header">
+        <span class="d-center-title">Günlük Akış</span>
+        <button class="d-more-btn">•••</button>
+      </div>
+      <div id="dailyTaskList"></div>
+    </main>
+
+    <!-- RIGHT: Stats -->
+    <aside class="d-right">
+      <div>
+        <div class="d-right-section-title">İstatistik ve Verimlilik</div>
+        <div class="d-stat-card">
+          <div class="d-ring-row">
+            <div class="d-ring-wrap">
+              <svg class="d-ring-svg" viewBox="0 0 78 78">
+                <circle class="d-ring-track" cx="39" cy="39" r="31"/>
+                <circle class="d-ring-fill"  cx="39" cy="39" r="31"
+                        id="ringFill"
+                        stroke-dasharray="194.8"
+                        stroke-dashoffset="194.8"/>
+              </svg>
+              <div class="d-ring-center" id="ringCount">0/0</div>
+            </div>
+            <div class="d-ring-text">
+              <div class="label">Tamamlama Oranı</div>
+              <div class="value" id="ringStatus">Görev Yok</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-timer-card" id="timerCard">
+        <!-- Mode tabs -->
+        <div class="d-timer-modes">
+          <button class="d-tmode active" data-mins="25" data-mode="odak"       onclick="setTimerMode(this)">Odak</button>
+          <button class="d-tmode"        data-mins="5"  data-mode="mola-kisa"  onclick="setTimerMode(this)">Kısa Mola</button>
+          <button class="d-tmode"        data-mins="15" data-mode="mola-uzun"  onclick="setTimerMode(this)">Uzun Mola</button>
+        </div>
+
+        <!-- Ring with time + controls inside -->
+        <div class="d-pomo-ring-wrap">
+          <svg class="d-pomo-svg" viewBox="0 0 130 130">
+            <circle class="d-pomo-track" cx="65" cy="65" r="56"/>
+            <circle class="d-pomo-fill" id="pomoFill" cx="65" cy="65" r="56"
+                    stroke-dasharray="351.9"
+                    stroke-dashoffset="0"/>
+          </svg>
+          <div class="d-pomo-center">
+            <div class="d-pomo-time" id="timerDisplay">25:00</div>
+            <div class="d-pomo-controls">
+              <button class="d-pomo-play" id="timerBtn" onclick="toggleTimer()">&#9654;</button>
+              <button class="d-pomo-reset" onclick="resetTimer()" title="Sıfırla">&#8635;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Session dots -->
+        <div class="d-pomo-sessions">
+          <div class="d-pomo-session-label" id="sessionLabel">0 seans tamamlandı</div>
+          <div class="d-pomo-dots" id="pomoDots">
+            <div class="d-pomo-dot"></div>
+            <div class="d-pomo-dot"></div>
+            <div class="d-pomo-dot"></div>
+            <div class="d-pomo-dot"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-trend-card">
+        <div class="d-right-section-title">Haftalık Trend</div>
+        <div class="d-trend-chart">
+          <div class="d-trend-bars" id="trendBars"></div>
+          <div class="d-trend-labels" id="trendLabels"></div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ADD TASK MODAL -->
+  <div class="d-overlay" id="overlay" onclick="handleOverlayClick(event)">
+    <div class="d-modal">
+      <h2>Yeni Görev Ekle</h2>
+
+      <div class="d-fg">
+        <label class="d-fl">Başlık *</label>
+        <input class="d-fi" id="fTitle" placeholder="Görev başlığı..." />
+      </div>
+
+      <div class="d-fg">
+        <label class="d-fl">Açıklama</label>
+        <textarea class="d-fta" id="fDesc" placeholder="Kısa açıklama..."></textarea>
+      </div>
+
+      <div class="d-form-row">
+        <div class="d-fg">
+          <label class="d-fl">Saat</label>
+          <input class="d-fi" id="fTime" type="time" />
+        </div>
+        <div class="d-fg">
+          <label class="d-fl">Kategori</label>
+          <select class="d-fs" id="fCategory">
+            <option value="">Seç...</option>
+            <!-- filled dynamically -->
+          </select>
+        </div>
+      </div>
+
+      <div class="d-fg">
+        <label class="d-fl">Öncelik</label>
+        <select class="d-fs" id="fPriority">
+          <option value="orta">Orta</option>
+          <option value="acil">Acil</option>
+          <option value="düşük">Düşük</option>
+        </select>
+      </div>
+
+      <div class="d-modal-foot">
+        <button class="d-btn-cancel" onclick="closeModal()">İptal</button>
+        <button class="d-btn-save"   onclick="submitTask()">Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY MANAGER MODAL -->
+  <div class="d-overlay" id="catOverlay" onclick="handleCatOverlayClick(event)">
+    <div class="d-modal" style="max-width:420px">
+      <h2>Kategorileri Yönet</h2>
+      <div class="d-catmgr-list" id="catMgrList"></div>
+      <div class="d-catmgr-addrow">
+        <input type="text" id="newCatName" placeholder="Yeni kategori adı..." onkeydown="handleNewCatKey(event)" />
+        <input type="color" class="d-color-picker" id="newCatColor" value="#06b6d4" title="Renk seç" />
+        <button class="d-catmgr-add-btn" onclick="submitNewCategory()">Ekle</button>
+      </div>
+      <div class="d-modal-foot">
+        <button class="d-btn-cancel" onclick="closeCatManager()">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── State ────────────────────────────────────────────
+    let currentDate   = new Date();
+    let allTasks      = [];
+    let allCategories = [];
+    let activeCat     = 'all';
+    let activePriority = null;
+
+    // ── Pomodoro state ────────────────────────────────────
+    const TIMER_MODES = { odak: 25, 'mola-kisa': 5, 'mola-uzun': 15 };
+    let timerMode    = 'odak';
+    let timerTotal   = 25 * 60;  // seconds for current mode
+    let timerSecs    = 25 * 60;
+    let timerRunning = false;
+    let timerInterval = null;
+    let pomodorosDone = 0;        // completed focus sessions today
+    const POMO_C     = 2 * Math.PI * 56; // r=56 → ~351.9
+
+    // ── Date helpers ─────────────────────────────────────
+    function isoDate(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function updateDateLabel() {
+      const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+      document.getElementById('dateText').textContent =
+        currentDate.toLocaleDateString('tr-TR', opts);
+    }
+
+    // ── Weekly trend chart ───────────────────────────────
+    async function buildTrend() {
+      const res  = await fetch(`/daily/weekly-stats?date=${isoDate(currentDate)}`);
+      const data = await res.json(); // [{date, total, completed}, ...]
+
+      const barsEl   = document.getElementById('trendBars');
+      const labelsEl = document.getElementById('trendLabels');
+      const todayIso = isoDate(new Date());
+
+      // Height = relative to highest completed count this week (min 4px floor)
+      const maxCompleted = Math.max(...data.map(d => d.completed), 1);
+
+      barsEl.innerHTML = data.map(d => {
+        const isToday  = d.date === todayIso;
+        const isCurrent = d.date === isoDate(currentDate);
+        const heightPct = Math.max((d.completed / maxCompleted) * 100, d.total > 0 ? 8 : 4);
+        const isEmpty   = d.total === 0;
+
+        const tooltipText = isEmpty
+          ? 'Görev yok'
+          : `${d.completed}/${d.total} tamamlandı`;
+
+        const cls = ['d-bar-wrap',
+          isToday  ? 'today'   : '',
+          isCurrent && !isToday ? 'today' : '',
+          isEmpty  ? 'empty'   : '',
+        ].filter(Boolean).join(' ');
+
+        return `
+          <div class="${cls}" data-date="${d.date}">
+            <div class="d-bar-tooltip">${tooltipText}</div>
+            <div class="d-bar" style="height:${heightPct}%"></div>
+          </div>`;
+      }).join('');
+
+      labelsEl.innerHTML = data.map(d => {
+        const isToday = d.date === todayIso;
+        const date = new Date(d.date + 'T00:00:00');
+        const label = date.toLocaleDateString('tr-TR', { weekday: 'short' });
+        return `<div class="d-trend-day${isToday ? ' today' : ''}">${label}</div>`;
+      }).join('');
+    }
+
+    // ── Load & render tasks ──────────────────────────────
+    async function loadTasks() {
+      const res = await fetch(`/daily/tasks?date=${isoDate(currentDate)}`);
+      allTasks = await res.json();
+      renderTasks();
+      updateRing();
+      buildTrend();
+    }
+
+    function renderTasks() {
+      let tasks = allTasks;
+      if (activeCat !== 'all')  tasks = tasks.filter(t => t.category === activeCat);
+      if (activePriority)       tasks = tasks.filter(t => t.priority === activePriority);
+
+      const list = document.getElementById('dailyTaskList');
+
+      if (tasks.length === 0) {
+        list.innerHTML = `
+          <div class="d-empty">
+            <div class="d-empty-icon">📋</div>
+            <div class="d-empty-text">Bugün için görev yok. Yeni görev ekle!</div>
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = tasks.map(buildCard).join('');
+    }
+
+    function buildCard(t) {
+      const STATUS_CYCLE = {
+        'yapılacak': 'yapılıyor',
+        'yapılıyor':  'tamamlandı',
+        'tamamlandı': 'yapılacak',
+      };
+      const STATUS_LABEL = {
+        'yapılacak': 'Yapılacak',
+        'yapılıyor':  'Yapılıyor',
+        'tamamlandı': 'Tamamlandı',
+      };
+
+      const cat     = allCategories.find(c => c.name === t.category);
+      const catColor = cat ? cat.color : '#64748b';
+      const catTag  = t.category
+        ? `<span class="d-tag" style="background:${catColor}22;color:${catColor};border:1px solid ${catColor}44">${escHtml(t.category)}</span>` : '';
+      const timeTag = t.time
+        ? `<span class="d-time-badge">&#128336; ${t.time}</span>` : '';
+      const priLabel = { acil:'Acil', orta:'Orta', 'düşük':'Düşük' }[t.priority] || t.priority;
+
+      return `
+        <div class="d-card ${t.status}" data-id="${t.id}">
+          <div class="d-card-top">
+            <span class="d-card-title">${escHtml(t.title)}</span>
+            <button class="d-status-pill pill-${t.status}"
+                    onclick="cycleStatus(${t.id},'${STATUS_CYCLE[t.status]}')"
+                    title="Durumu değiştir">
+              ${STATUS_LABEL[t.status]}
+            </button>
+          </div>
+          ${t.description ? `<div class="d-card-desc">${escHtml(t.description)}</div>` : ''}
+          <div class="d-card-footer">
+            <div class="d-card-meta">
+              ${timeTag}
+              ${catTag}
+              <span class="d-pri-tag pri-${t.priority}">${priLabel}</span>
+            </div>
+            <button class="d-del-btn" onclick="deleteTask(${t.id})" title="Sil">✕</button>
+          </div>
+        </div>`;
+    }
+
+    function escHtml(text) {
+      const d = document.createElement('div');
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    // ── Categories ───────────────────────────────────────
+    async function loadCategories() {
+      const res = await fetch('/daily/categories');
+      allCategories = await res.json();
+      renderCategoryPills();
+      renderCategoryOptions();
+    }
+
+    function renderCategoryPills() {
+      const container = document.getElementById('catPills');
+      const allPill = `<button class="d-cat-pill${activeCat === 'all' ? ' active' : ''}" data-cat="all" onclick="filterCat(this)">Tümü</button>`;
+      const pills = allCategories.map(cat =>
+        `<button class="d-cat-pill${activeCat === cat.name ? ' active' : ''}" data-cat="${escHtml(cat.name)}" onclick="filterCat(this)" style="--cat-color:${cat.color}">${escHtml(cat.name)}</button>`
+      ).join('');
+      container.innerHTML = allPill + pills;
+    }
+
+    function renderCategoryOptions() {
+      const sel = document.getElementById('fCategory');
+      const current = sel.value;
+      sel.innerHTML = '<option value="">Seç...</option>' +
+        allCategories.map(cat =>
+          `<option value="${escHtml(cat.name)}"${cat.name === current ? ' selected' : ''}>${escHtml(cat.name)}</option>`
+        ).join('');
+    }
+
+    // ── Category Manager ─────────────────────────────────
+    function openCatManager() {
+      renderCatMgrList();
+      document.getElementById('catOverlay').classList.add('open');
+    }
+
+    function closeCatManager() {
+      document.getElementById('catOverlay').classList.remove('open');
+      document.getElementById('newCatName').value = '';
+      document.getElementById('newCatColor').value = '#06b6d4';
+    }
+
+    function handleCatOverlayClick(e) {
+      if (e.target === document.getElementById('catOverlay')) closeCatManager();
+    }
+
+    function renderCatMgrList() {
+      const el = document.getElementById('catMgrList');
+      if (allCategories.length === 0) {
+        el.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem;padding:10px 0">Henüz kategori yok.</div>';
+        return;
+      }
+      el.innerHTML = allCategories.map(cat => `
+        <div class="d-catmgr-row" id="catrow-${cat.id}">
+          <div class="d-catmgr-swatch" style="background:${cat.color}"></div>
+          <span class="d-catmgr-name">${escHtml(cat.name)}</span>
+          <input type="color" class="d-color-picker" value="${cat.color}"
+                 onchange="updateCatColor(${cat.id}, this.value)"
+                 title="Renk değiştir" style="width:28px;height:28px;padding:1px" />
+          <button class="d-catmgr-edit-btn" onclick="startEditCat(${cat.id})" title="Adı düzenle">✏</button>
+          <button class="d-catmgr-del-btn"  onclick="deleteCat(${cat.id})"    title="Sil">✕</button>
+        </div>`).join('');
+    }
+
+    function startEditCat(id) {
+      const cat = allCategories.find(c => c.id === id);
+      if (!cat) return;
+      const row     = document.getElementById(`catrow-${id}`);
+      const nameSpan = row.querySelector('.d-catmgr-name');
+      const editBtn  = row.querySelector('.d-catmgr-edit-btn');
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'd-catmgr-name-input';
+      input.value = cat.name;
+      nameSpan.replaceWith(input);
+      input.focus();
+      input.select();
+
+      editBtn.textContent = '✓';
+      editBtn.style.color = 'var(--da)';
+      editBtn.onclick = () => saveCatName(id, input.value);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  saveCatName(id, input.value);
+        if (e.key === 'Escape') renderCatMgrList();
+      });
+    }
+
+    async function saveCatName(id, name) {
+      name = name.trim();
+      if (!name) return;
+      await fetch(`/daily/categories/${id}/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      await loadCategories();
+      renderCatMgrList();
+      renderTasks();
+    }
+
+    async function updateCatColor(id, color) {
+      await fetch(`/daily/categories/${id}/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ color }),
+      });
+      await loadCategories();
+      renderCatMgrList();
+      renderTasks();
+    }
+
+    async function deleteCat(id) {
+      await fetch(`/daily/categories/${id}/delete`, { method: 'POST' });
+      await loadCategories();
+      renderCatMgrList();
+      renderTasks();
+    }
+
+    async function submitNewCategory() {
+      const name = document.getElementById('newCatName').value.trim();
+      if (!name) { document.getElementById('newCatName').focus(); return; }
+      const color = document.getElementById('newCatColor').value;
+      await fetch('/daily/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, color }),
+      });
+      document.getElementById('newCatName').value = '';
+      await loadCategories();
+      renderCatMgrList();
+    }
+
+    function handleNewCatKey(e) {
+      if (e.key === 'Enter') submitNewCategory();
+    }
+
+    // ── Stats ring ───────────────────────────────────────
+    async function updateRing() {
+      const res = await fetch(`/daily/stats?date=${isoDate(currentDate)}`);
+      const { total, completed } = await res.json();
+
+      document.getElementById('ringCount').textContent   = `${completed}/${total}`;
+      document.getElementById('ringStatus').textContent  =
+        total === 0       ? 'Görev Yok'      :
+        completed === total ? 'İş Bitti'      :
+        completed === 0   ? 'Başlanmadı'     : 'Devam Ediyor';
+
+      const C = 2 * Math.PI * 31; // r=31 → ~194.8
+      const pct = total > 0 ? completed / total : 0;
+      document.getElementById('ringFill').style.strokeDashoffset = C * (1 - pct);
+    }
+
+    // ── Actions ──────────────────────────────────────────
+    async function cycleStatus(id, newStatus) {
+      await fetch(`/daily/status/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      await loadTasks();
+    }
+
+    async function deleteTask(id) {
+      await fetch(`/daily/delete/${id}`, { method: 'POST' });
+      await loadTasks();
+    }
+
+    // ── Filters ──────────────────────────────────────────
+    function filterCat(btn) {
+      activeCat = btn.dataset.cat;
+      document.querySelectorAll('.d-cat-pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      renderTasks();
+    }
+
+    function filterPriority(row) {
+      const p = row.dataset.p;
+      if (activePriority === p) {
+        activePriority = null;
+        row.classList.remove('active');
+      } else {
+        activePriority = p;
+        document.querySelectorAll('.d-prow').forEach(r => r.classList.remove('active'));
+        row.classList.add('active');
+      }
+      renderTasks();
+    }
+
+    // ── Modal ─────────────────────────────────────────────
+    function openModal() {
+      document.getElementById('overlay').classList.add('open');
+      document.getElementById('fTitle').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('overlay').classList.remove('open');
+      ['fTitle','fDesc','fTime'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('fCategory').value = '';
+      document.getElementById('fPriority').value = 'orta';
+    }
+
+    function handleOverlayClick(e) {
+      if (e.target === document.getElementById('overlay')) closeModal();
+    }
+
+    async function submitTask() {
+      const title = document.getElementById('fTitle').value.trim();
+      if (!title) { document.getElementById('fTitle').focus(); return; }
+
+      await fetch('/daily/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          description: document.getElementById('fDesc').value.trim(),
+          time:        document.getElementById('fTime').value,
+          category:    document.getElementById('fCategory').value,
+          priority:    document.getElementById('fPriority').value,
+          date:        isoDate(currentDate),
+        }),
+      });
+      closeModal();
+      await loadTasks();
+    }
+
+    // ── Date navigation ───────────────────────────────────
+    document.getElementById('btnPrev').addEventListener('click', () => {
+      currentDate.setDate(currentDate.getDate() - 1);
+      updateDateLabel();
+      loadTasks();
+    });
+    document.getElementById('btnNext').addEventListener('click', () => {
+      currentDate.setDate(currentDate.getDate() + 1);
+      updateDateLabel();
+      loadTasks();
+    });
+
+    // ── Keyboard shortcuts ────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); }
+      if (e.key === 'Enter' && document.getElementById('overlay').classList.contains('open')) {
+        e.preventDefault();
+        submitTask();
+      }
+    });
+
+    // ── Calendar popup ────────────────────────────────────
+    let calendarOpen = false;
+    let calYear  = currentDate.getFullYear();
+    let calMonth = currentDate.getMonth();
+
+    const CAL_MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+                        'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+
+    function toggleCalendar() {
+      if (calendarOpen) {
+        closeCalendar();
+      } else {
+        calYear  = currentDate.getFullYear();
+        calMonth = currentDate.getMonth();
+        renderCalendarGrid();
+        document.getElementById('calendarPopup').classList.add('open');
+        calendarOpen = true;
+      }
+    }
+
+    function closeCalendar() {
+      calendarOpen = false;
+      document.getElementById('calendarPopup').classList.remove('open');
+    }
+
+    function calPrevMonth() {
+      calMonth--;
+      if (calMonth < 0) { calMonth = 11; calYear--; }
+      renderCalendarGrid();
+    }
+
+    function calNextMonth() {
+      calMonth++;
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      renderCalendarGrid();
+    }
+
+    function renderCalendarGrid() {
+      document.getElementById('calMonthLabel').textContent = `${CAL_MONTHS[calMonth]} ${calYear}`;
+
+      const todayIso    = isoDate(new Date());
+      const selectedIso = isoDate(currentDate);
+
+      // Mon-based offset: JS getDay() 0=Sun → we want Mon=0
+      const firstDayJS  = new Date(calYear, calMonth, 1).getDay();
+      const startOffset = (firstDayJS + 6) % 7;
+      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      const daysInPrev  = new Date(calYear, calMonth, 0).getDate();
+
+      const days = [];
+
+      // Trailing days from previous month
+      for (let i = startOffset - 1; i >= 0; i--) {
+        const d = daysInPrev - i;
+        const m = calMonth === 0 ? 11 : calMonth - 1;
+        const y = calMonth === 0 ? calYear - 1 : calYear;
+        days.push({ day: d, iso: `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, other: true });
+      }
+
+      // Current month days
+      for (let d = 1; d <= daysInMonth; d++) {
+        days.push({ day: d, iso: `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, other: false });
+      }
+
+      // Leading days from next month to complete last row
+      const rem = 7 - (days.length % 7);
+      if (rem < 7) {
+        for (let d = 1; d <= rem; d++) {
+          const m = calMonth === 11 ? 0 : calMonth + 1;
+          const y = calMonth === 11 ? calYear + 1 : calYear;
+          days.push({ day: d, iso: `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, other: true });
+        }
+      }
+
+      const grid = document.getElementById('calGrid');
+      // Keep the day-of-week headers (first 7 children), replace the rest
+      const headers = [...grid.querySelectorAll('.d-cal-dow')];
+      grid.innerHTML = '';
+      headers.forEach(h => grid.appendChild(h));
+
+      days.forEach(({ day, iso, other }) => {
+        const div = document.createElement('div');
+        div.className = ['d-cal-day',
+          other ? 'other-month' : '',
+          iso === todayIso ? 'today' : '',
+          iso === selectedIso ? 'selected' : '',
+        ].filter(Boolean).join(' ');
+        div.textContent = day;
+        div.onclick = () => selectCalDay(iso);
+        grid.appendChild(div);
+      });
+    }
+
+    function selectCalDay(iso) {
+      currentDate = new Date(iso + 'T00:00:00');
+      updateDateLabel();
+      closeCalendar();
+      loadTasks();
+    }
+
+    // Close calendar on outside click
+    document.addEventListener('click', e => {
+      if (!calendarOpen) return;
+      const popup = document.getElementById('calendarPopup');
+      const label = document.getElementById('currentDateLabel');
+      if (!popup.contains(e.target) && !label.contains(e.target)) closeCalendar();
+    });
+
+    // ── Pomodoro timer ────────────────────────────────────
+    function setTimerMode(btn) {
+      if (timerRunning) return; // don't switch while running
+      document.querySelectorAll('.d-tmode').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      timerMode  = btn.dataset.mode;
+      timerTotal = TIMER_MODES[timerMode] * 60;
+      timerSecs  = timerTotal;
+      const card = document.getElementById('timerCard');
+      card.className = 'd-timer-card mode-' + timerMode;
+      renderTimer();
+    }
+
+    function toggleTimer() {
+      if (timerRunning) {
+        // Pause
+        clearInterval(timerInterval);
+        timerRunning = false;
+        document.getElementById('timerBtn').innerHTML = '&#9654;';
+      } else {
+        // Start / resume
+        timerRunning = true;
+        document.getElementById('timerBtn').innerHTML = '&#9646;&#9646;';
+        timerInterval = setInterval(() => {
+          if (timerSecs <= 0) {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            document.getElementById('timerBtn').innerHTML = '&#9654;';
+            onTimerFinish();
+            return;
+          }
+          timerSecs--;
+          renderTimer();
+        }, 1000);
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      timerSecs = timerTotal;
+      document.getElementById('timerBtn').innerHTML = '&#9654;';
+      renderTimer();
+    }
+
+    function onTimerFinish() {
+      playBeep();
+      timerSecs = timerTotal;
+      renderTimer();
+
+      if (timerMode === 'odak') {
+        pomodorosDone++;
+        updateSessionDots();
+        showTimerToast('Odak seansı tamamlandı! Mola zamanı.');
+      } else {
+        showTimerToast('Mola bitti! Odak zamanı.');
+      }
+
+      // Browser notification if permitted
+      if (Notification.permission === 'granted') {
+        const msg = timerMode === 'odak'
+          ? 'Odak seansı tamamlandı!'
+          : 'Mola bitti!';
+        new Notification('Günlük İş Takibi', { body: msg, icon: '/favicon.ico' });
+      }
+    }
+
+    function renderTimer() {
+      const m = String(Math.floor(timerSecs / 60)).padStart(2, '0');
+      const s = String(timerSecs % 60).padStart(2, '0');
+      const display = `${m}:${s}`;
+
+      document.getElementById('timerDisplay').textContent = display;
+
+      // Tab title update
+      document.title = timerRunning
+        ? `${display} — ${timerMode === 'odak' ? 'Odak' : 'Mola'}`
+        : 'Günlük İş Takibi';
+
+      // SVG ring: full at start, depletes to 0
+      const pct = timerSecs / timerTotal;
+      document.getElementById('pomoFill').style.strokeDashoffset = POMO_C * (1 - pct);
+    }
+
+    function updateSessionDots() {
+      const dots = document.querySelectorAll('.d-pomo-dot');
+      const cycle = pomodorosDone % 4; // reset cycle every 4
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('done', i < cycle);
+      });
+      const total = pomodorosDone;
+      document.getElementById('sessionLabel').textContent =
+        total === 0 ? '0 seans tamamlandı'
+                    : `${total} seans tamamlandı`;
+    }
+
+    // Simple two-tone beep via Web Audio API (no external files)
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [660, 880].forEach((freq, i) => {
+          const osc  = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = freq;
+          osc.type = 'sine';
+          gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.2);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.2 + 0.4);
+          osc.start(ctx.currentTime + i * 0.2);
+          osc.stop(ctx.currentTime  + i * 0.2 + 0.4);
+        });
+      } catch (_) { /* Audio not supported — silent */ }
+    }
+
+    // Toast notification
+    function showTimerToast(msg) {
+      const el = document.createElement('div');
+      el.textContent = msg;
+      Object.assign(el.style, {
+        position: 'fixed', bottom: '24px', left: '50%',
+        transform: 'translateX(-50%)',
+        background: '#1a1f2e', color: '#f1f5f9',
+        border: '1px solid rgba(255,255,255,.12)',
+        borderRadius: '10px', padding: '10px 20px',
+        fontSize: '.88rem', fontFamily: 'Outfit, sans-serif',
+        boxShadow: '0 8px 24px rgba(0,0,0,.4)',
+        zIndex: '9999', opacity: '0',
+        transition: 'opacity .3s',
+      });
+      document.body.appendChild(el);
+      requestAnimationFrame(() => { el.style.opacity = '1'; });
+      setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+      }, 3000);
+    }
+
+    // Request notification permission on first interaction
+    document.addEventListener('click', () => {
+      if (Notification.permission === 'default') Notification.requestPermission();
+    }, { once: true });
+
+    // ── Init ─────────────────────────────────────────────
+    async function init() {
+      updateDateLabel();
+      await loadCategories();
+      loadTasks(); // also calls buildTrend() internally
+    }
+    init();
+  </script>
+</body>
+</html>
