@@ -350,6 +350,19 @@
     }
     .d-del-btn:hover { background: rgba(239,68,68,.12); color: #ef4444; }
 
+    .d-edit-btn {
+      width: 28px; height: 28px;
+      background: transparent;
+      border: none;
+      border-radius: 7px;
+      color: var(--text-muted);
+      font-size: .75rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s;
+      padding: 0;
+    }
+    .d-edit-btn:hover { background: rgba(6,182,212,.12); color: var(--da); }
+
     .d-empty {
       text-align: center;
       padding: 60px 20px;
@@ -434,6 +447,26 @@
     }
     .d-timer-card.mode-mola-kisa  { border-color: rgba(16,185,129,.35); }
     .d-timer-card.mode-mola-uzun  { border-color: rgba(167,139,250,.35); }
+
+    .d-notif-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .d-notif-btn {
+      font-size: .72rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      display: flex; align-items: center; gap: 5px;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .d-notif-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .d-notif-btn.granted { color: var(--da); border-color: rgba(6,182,212,.4); }
+    .d-notif-btn.denied  { color: #ef4444; border-color: rgba(239,68,68,.3); opacity: .8; }
 
     /* Mode tabs */
     .d-timer-modes {
@@ -588,18 +621,51 @@
     .d-bar {
       width: 100%;
       border-radius: 4px 4px 0 0;
-      background: linear-gradient(to top, var(--da), rgba(6,182,212,.3));
-      opacity: .55;
+      opacity: .6;
       min-height: 4px;
       transition: height .5s ease, opacity .2s;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .d-bar-todo {
+      background: rgba(100,116,139,.28);
+      transition: flex .5s ease;
+    }
+    .d-bar-done {
+      background: linear-gradient(to top, var(--da), rgba(6,182,212,.45));
+      transition: flex .5s ease;
     }
     .d-bar-wrap:hover .d-bar { opacity: 1; }
     .d-bar-wrap.today .d-bar {
-      opacity: .95;
-      background: linear-gradient(to top, var(--da), rgba(6,182,212,.6));
+      opacity: 1;
       box-shadow: 0 0 10px var(--da-glow);
     }
+    .d-bar-wrap.today .d-bar-done {
+      background: linear-gradient(to top, var(--da), rgba(6,182,212,.7));
+    }
     .d-bar-wrap.empty .d-bar { opacity: .2; }
+
+    .d-trend-legend {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .d-trend-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: .65rem;
+      color: var(--text-muted);
+    }
+    .d-legend-swatch {
+      width: 10px; height: 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .d-legend-swatch.done { background: var(--da); }
+    .d-legend-swatch.todo { background: rgba(100,116,139,.5); }
 
     /* Tooltip */
     .d-bar-tooltip {
@@ -916,6 +982,121 @@
     }
     .d-catmgr-add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--da-glow); }
 
+    /* ── ANALYSIS MODAL ──────────────────────────────────── */
+    .d-analysis-modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      width: 860px;
+      max-width: 96vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px) scale(.97);
+      transition: transform .25s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .d-overlay.open .d-analysis-modal { transform: translateY(0) scale(1); }
+
+    .d-analysis-controls {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .d-analysis-controls .d-fg { margin: 0; flex: 1; min-width: 140px; }
+    .d-analysis-run {
+      padding: 10px 22px;
+      background: linear-gradient(135deg, var(--da) 0%, var(--da-dim) 100%);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: .88rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all .2s;
+    }
+    .d-analysis-run:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--da-glow); }
+
+    .d-analysis-shortcut-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .d-analysis-shortcut {
+      padding: 5px 13px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: .75rem;
+      transition: all .2s;
+    }
+    .d-analysis-shortcut:hover,
+    .d-analysis-shortcut.active {
+      border-color: var(--da);
+      color: var(--da);
+      background: rgba(6,182,212,.08);
+    }
+
+    .d-analysis-summary {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .d-analysis-stat {
+      flex: 1;
+      min-width: 110px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .d-analysis-stat .val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--da);
+      line-height: 1;
+    }
+    .d-analysis-stat .lbl {
+      font-size: .68rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .d-analysis-charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .d-analysis-chart-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .d-analysis-chart-box.wide { grid-column: 1 / -1; }
+    .d-analysis-chart-title {
+      font-size: .75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .d-analysis-empty {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--text-muted);
+      font-size: .9rem;
+    }
+
     /* Responsive */
     @media (max-width: 960px) {
       .d-layout { grid-template-columns: 1fr; overflow: visible; }
@@ -924,6 +1105,7 @@
       .d-left  { border-right: none; border-bottom: 1px solid var(--border); }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -934,6 +1116,7 @@
       <h1>Günlük İş Takibi</h1>
     </div>
     <div class="d-header-right">
+      <button class="d-icon-btn" onclick="openAnalysis()" title="Dönem analizi">📊 Analiz</button>
       <a href="/" class="d-icon-btn" title="TaskFlow — Görev Listesi">
         <span class="nav-dot"></span> TaskFlow
       </a>
@@ -1075,6 +1258,11 @@
             <div class="d-pomo-dot"></div>
           </div>
         </div>
+
+        <!-- Notification status -->
+        <div class="d-notif-row">
+          <button class="d-notif-btn" id="notifBtn" onclick="handleNotifBtn()"></button>
+        </div>
       </div>
 
       <div class="d-trend-card">
@@ -1082,6 +1270,14 @@
         <div class="d-trend-chart">
           <div class="d-trend-bars" id="trendBars"></div>
           <div class="d-trend-labels" id="trendLabels"></div>
+          <div class="d-trend-legend">
+            <div class="d-trend-legend-item">
+              <div class="d-legend-swatch done"></div> Tamamlandı
+            </div>
+            <div class="d-trend-legend-item">
+              <div class="d-legend-swatch todo"></div> Tamamlanmadı
+            </div>
+          </div>
         </div>
       </div>
     </aside>
@@ -1091,7 +1287,7 @@
   <!-- ADD TASK MODAL -->
   <div class="d-overlay" id="overlay" onclick="handleOverlayClick(event)">
     <div class="d-modal">
-      <h2>Yeni Görev Ekle</h2>
+      <h2 id="modalTitle">Yeni Görev Ekle</h2>
 
       <div class="d-fg">
         <label class="d-fl">Başlık *</label>
@@ -1128,7 +1324,79 @@
 
       <div class="d-modal-foot">
         <button class="d-btn-cancel" onclick="closeModal()">İptal</button>
-        <button class="d-btn-save"   onclick="submitTask()">Ekle</button>
+        <button class="d-btn-save" id="modalSubmitBtn" onclick="submitTask()">Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYSIS MODAL -->
+  <div class="d-overlay" id="analysisOverlay" onclick="handleAnalysisOverlayClick(event)">
+    <div class="d-analysis-modal">
+      <h2>Dönem Analizi</h2>
+
+      <!-- Quick range shortcuts -->
+      <div class="d-analysis-shortcut-row">
+        <button class="d-analysis-shortcut" onclick="setAnalysisRange(7,  this)">Son 7 gün</button>
+        <button class="d-analysis-shortcut" onclick="setAnalysisRange(14, this)">Son 14 gün</button>
+        <button class="d-analysis-shortcut" onclick="setAnalysisRange(30, this)">Son 30 gün</button>
+        <button class="d-analysis-shortcut" onclick="setAnalysisRange(90, this)">Son 3 ay</button>
+      </div>
+
+      <!-- Custom date range -->
+      <div class="d-analysis-controls">
+        <div class="d-fg">
+          <label class="d-fl">Başlangıç</label>
+          <input class="d-fi" id="aFrom" type="date" />
+        </div>
+        <div class="d-fg">
+          <label class="d-fl">Bitiş</label>
+          <input class="d-fi" id="aTo" type="date" />
+        </div>
+        <button class="d-analysis-run" onclick="runAnalysis()">Analiz Et</button>
+      </div>
+
+      <!-- Summary stats -->
+      <div class="d-analysis-summary" id="analysisSummary" style="display:none">
+        <div class="d-analysis-stat">
+          <div class="val" id="aStatTotal">—</div>
+          <div class="lbl">Toplam Görev</div>
+        </div>
+        <div class="d-analysis-stat">
+          <div class="val" id="aStatDone">—</div>
+          <div class="lbl">Tamamlanan</div>
+        </div>
+        <div class="d-analysis-stat">
+          <div class="val" id="aStatRate">—</div>
+          <div class="lbl">Tamamlama %</div>
+        </div>
+        <div class="d-analysis-stat">
+          <div class="val" id="aStatBest">—</div>
+          <div class="lbl">En Verimli Gün</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="d-analysis-charts" id="analysisCharts" style="display:none">
+        <div class="d-analysis-chart-box wide">
+          <div class="d-analysis-chart-title">Günlük Tamamlama (Tamamlanan / Toplam)</div>
+          <canvas id="chartLine" height="110"></canvas>
+        </div>
+        <div class="d-analysis-chart-box">
+          <div class="d-analysis-chart-title">Günlük Yığın Grafik</div>
+          <canvas id="chartBar" height="180"></canvas>
+        </div>
+        <div class="d-analysis-chart-box">
+          <div class="d-analysis-chart-title">Kategoriye Göre Dağılım</div>
+          <canvas id="chartDoughnut" height="180"></canvas>
+        </div>
+      </div>
+
+      <div class="d-analysis-empty" id="analysisEmpty" style="display:none">
+        Bu dönemde hiç görev bulunamadı.
+      </div>
+
+      <div class="d-modal-foot" style="margin-top:20px">
+        <button class="d-btn-cancel" onclick="closeAnalysis()">Kapat</button>
       </div>
     </div>
   </div>
@@ -1151,11 +1419,12 @@
 
   <script>
     // ── State ────────────────────────────────────────────
-    let currentDate   = new Date();
-    let allTasks      = [];
-    let allCategories = [];
-    let activeCat     = 'all';
+    let currentDate    = new Date();
+    let allTasks       = [];
+    let allCategories  = [];
+    let activeCat      = 'all';
     let activePriority = null;
+    let editingTaskId  = null;
 
     // ── Pomodoro state ────────────────────────────────────
     const TIMER_MODES = { odak: 25, 'mola-kisa': 5, 'mola-uzun': 15 };
@@ -1190,29 +1459,37 @@
       const labelsEl = document.getElementById('trendLabels');
       const todayIso = isoDate(new Date());
 
-      // Height = relative to highest completed count this week (min 4px floor)
-      const maxCompleted = Math.max(...data.map(d => d.completed), 1);
+      // Bar height relative to the busiest day's total task count
+      const maxTotal = Math.max(...data.map(d => d.total), 1);
 
       barsEl.innerHTML = data.map(d => {
-        const isToday  = d.date === todayIso;
+        const isToday   = d.date === todayIso;
         const isCurrent = d.date === isoDate(currentDate);
-        const heightPct = Math.max((d.completed / maxCompleted) * 100, d.total > 0 ? 8 : 4);
         const isEmpty   = d.total === 0;
+        const incomplete = d.total - d.completed;
+
+        const heightPct = Math.max((d.total / maxTotal) * 100, d.total > 0 ? 8 : 4);
+
+        // flex values split the bar proportionally between done and todo
+        const doneFlex = d.total > 0 ? d.completed  : 0;
+        const todoFlex = d.total > 0 ? incomplete    : 1;
 
         const tooltipText = isEmpty
           ? 'Görev yok'
           : `${d.completed}/${d.total} tamamlandı`;
 
         const cls = ['d-bar-wrap',
-          isToday  ? 'today'   : '',
-          isCurrent && !isToday ? 'today' : '',
-          isEmpty  ? 'empty'   : '',
+          isToday || isCurrent ? 'today' : '',
+          isEmpty ? 'empty' : '',
         ].filter(Boolean).join(' ');
 
         return `
           <div class="${cls}" data-date="${d.date}">
             <div class="d-bar-tooltip">${tooltipText}</div>
-            <div class="d-bar" style="height:${heightPct}%"></div>
+            <div class="d-bar" style="height:${heightPct}%">
+              <div class="d-bar-todo" style="flex:${todoFlex}"></div>
+              <div class="d-bar-done" style="flex:${doneFlex}"></div>
+            </div>
           </div>`;
       }).join('');
 
@@ -1297,6 +1574,7 @@
               ${catTag}
               <span class="d-pri-tag pri-${t.priority}">${priLabel}</span>
             </div>
+            <button class="d-edit-btn" onclick="openEditModal(${t.id})" title="Düzenle">✏</button>
             <button class="d-del-btn" onclick="deleteTask(${t.id})" title="Sil">✕</button>
           </div>
         </div>`;
@@ -1495,12 +1773,31 @@
 
     // ── Modal ─────────────────────────────────────────────
     function openModal() {
+      editingTaskId = null;
+      document.getElementById('modalTitle').textContent = 'Yeni Görev Ekle';
+      document.getElementById('modalSubmitBtn').textContent = 'Ekle';
+      document.getElementById('overlay').classList.add('open');
+      document.getElementById('fTitle').focus();
+    }
+
+    function openEditModal(id) {
+      const task = allTasks.find(t => t.id === id);
+      if (!task) return;
+      editingTaskId = id;
+      document.getElementById('modalTitle').textContent = 'Görevi Düzenle';
+      document.getElementById('modalSubmitBtn').textContent = 'Kaydet';
+      document.getElementById('fTitle').value    = task.title;
+      document.getElementById('fDesc').value     = task.description || '';
+      document.getElementById('fTime').value     = task.time || '';
+      document.getElementById('fCategory').value = task.category || '';
+      document.getElementById('fPriority').value = task.priority || 'orta';
       document.getElementById('overlay').classList.add('open');
       document.getElementById('fTitle').focus();
     }
 
     function closeModal() {
       document.getElementById('overlay').classList.remove('open');
+      editingTaskId = null;
       ['fTitle','fDesc','fTime'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('fCategory').value = '';
       document.getElementById('fPriority').value = 'orta';
@@ -1514,18 +1811,27 @@
       const title = document.getElementById('fTitle').value.trim();
       if (!title) { document.getElementById('fTitle').focus(); return; }
 
-      await fetch('/daily/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          description: document.getElementById('fDesc').value.trim(),
-          time:        document.getElementById('fTime').value,
-          category:    document.getElementById('fCategory').value,
-          priority:    document.getElementById('fPriority').value,
-          date:        isoDate(currentDate),
-        }),
-      });
+      const payload = {
+        title,
+        description: document.getElementById('fDesc').value.trim(),
+        time:        document.getElementById('fTime').value,
+        category:    document.getElementById('fCategory').value,
+        priority:    document.getElementById('fPriority').value,
+      };
+
+      if (editingTaskId !== null) {
+        await fetch(`/daily/edit/${editingTaskId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await fetch('/daily/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, date: isoDate(currentDate) }),
+        });
+      }
       closeModal();
       await loadTasks();
     }
@@ -1544,7 +1850,7 @@
 
     // ── Keyboard shortcuts ────────────────────────────────
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); }
+      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); }
       if (e.key === 'Enter' && document.getElementById('overlay').classList.contains('open')) {
         e.preventDefault();
         submitTask();
@@ -1679,6 +1985,10 @@
         timerRunning = false;
         document.getElementById('timerBtn').innerHTML = '&#9654;';
       } else {
+        // Request notification permission on first start (non-blocking)
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission().then(renderNotifStatus);
+        }
         // Start / resume
         timerRunning = true;
         document.getElementById('timerBtn').innerHTML = '&#9646;&#9646;';
@@ -1712,17 +2022,13 @@
       if (timerMode === 'odak') {
         pomodorosDone++;
         updateSessionDots();
-        showTimerToast('Odak seansı tamamlandı! Mola zamanı.');
+        const toastMsg = 'Odak seansı tamamlandı! Mola zamanı.';
+        showTimerToast(toastMsg);
+        sendNotification('🍅 Pomodoro Tamamlandı!', `${pomodorosDone}. seans bitti. Mola zamanı!`);
       } else {
+        const label = timerMode === 'mola-kisa' ? 'Kısa mola' : 'Uzun mola';
         showTimerToast('Mola bitti! Odak zamanı.');
-      }
-
-      // Browser notification if permitted
-      if (Notification.permission === 'granted') {
-        const msg = timerMode === 'odak'
-          ? 'Odak seansı tamamlandı!'
-          : 'Mola bitti!';
-        new Notification('Günlük İş Takibi', { body: msg, icon: '/favicon.ico' });
+        sendNotification(`⏰ ${label} bitti!`, 'Yeni bir odak seansı başlatmaya hazır mısın?');
       }
     }
 
@@ -1797,14 +2103,244 @@
       }, 3000);
     }
 
-    // Request notification permission on first interaction
-    document.addEventListener('click', () => {
-      if (Notification.permission === 'default') Notification.requestPermission();
-    }, { once: true });
+    // ── Notification helpers ──────────────────────────────
+    function renderNotifStatus() {
+      const btn = document.getElementById('notifBtn');
+      if (!btn) return;
+      if (!('Notification' in window)) {
+        btn.textContent = '🔕 Bildirimler desteklenmiyor';
+        btn.disabled = true;
+        return;
+      }
+      const p = Notification.permission;
+      btn.className = 'd-notif-btn ' + (p === 'granted' ? 'granted' : p === 'denied' ? 'denied' : '');
+      if (p === 'granted') {
+        btn.innerHTML = '🔔 Bildirimler açık';
+      } else if (p === 'denied') {
+        btn.innerHTML = '🔕 Bildirimler engellendi — tarayıcı ayarlarından aç';
+      } else {
+        btn.innerHTML = '🔔 Bildirimlere izin ver';
+      }
+    }
+
+    async function handleNotifBtn() {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'denied') {
+        showTimerToast('Tarayıcı ayarlarından bildirimlere izin ver.');
+        return;
+      }
+      if (Notification.permission !== 'granted') {
+        await Notification.requestPermission();
+        renderNotifStatus();
+      }
+    }
+
+    function sendNotification(title, body) {
+      if (Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/static/favicon.ico' });
+      }
+    }
+
+    // ── Analysis ─────────────────────────────────────────
+    let chartLine     = null;
+    let chartBar      = null;
+    let chartDoughnut = null;
+
+    const CHART_DEFAULTS = {
+      color: '#94a3b8',
+      font: { family: 'Outfit, sans-serif', size: 11 },
+    };
+    Chart.defaults.color      = CHART_DEFAULTS.color;
+    Chart.defaults.font.family = CHART_DEFAULTS.font.family;
+    Chart.defaults.font.size   = CHART_DEFAULTS.font.size;
+
+    function openAnalysis() {
+      const today = isoDate(new Date());
+      document.getElementById('aTo').value = today;
+      // default: last 7 days
+      const d7 = new Date(); d7.setDate(d7.getDate() - 6);
+      document.getElementById('aFrom').value = isoDate(d7);
+      document.querySelectorAll('.d-analysis-shortcut')[0].classList.add('active');
+      document.getElementById('analysisOverlay').classList.add('open');
+      runAnalysis();
+    }
+
+    function closeAnalysis() {
+      document.getElementById('analysisOverlay').classList.remove('open');
+    }
+
+    function handleAnalysisOverlayClick(e) {
+      if (e.target === document.getElementById('analysisOverlay')) closeAnalysis();
+    }
+
+    function setAnalysisRange(days, btn) {
+      const today = new Date();
+      const from  = new Date();
+      from.setDate(today.getDate() - (days - 1));
+      document.getElementById('aTo').value   = isoDate(today);
+      document.getElementById('aFrom').value = isoDate(from);
+      document.querySelectorAll('.d-analysis-shortcut').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      runAnalysis();
+    }
+
+    async function runAnalysis() {
+      const from = document.getElementById('aFrom').value;
+      const to   = document.getElementById('aTo').value;
+      if (!from || !to) return;
+
+      const res  = await fetch(`/daily/analysis?from=${from}&to=${to}`);
+      const data = await res.json();
+
+      const { daily, categories } = data;
+      const totalTasks = daily.reduce((s, d) => s + d.total, 0);
+      const totalDone  = daily.reduce((s, d) => s + d.completed, 0);
+
+      const summaryEl = document.getElementById('analysisSummary');
+      const chartsEl  = document.getElementById('analysisCharts');
+      const emptyEl   = document.getElementById('analysisEmpty');
+
+      if (totalTasks === 0) {
+        summaryEl.style.display = 'none';
+        chartsEl.style.display  = 'none';
+        emptyEl.style.display   = 'block';
+        destroyCharts();
+        return;
+      }
+
+      emptyEl.style.display   = 'none';
+      summaryEl.style.display = 'flex';
+      chartsEl.style.display  = 'grid';
+
+      // Summary stats
+      const rate    = Math.round((totalDone / totalTasks) * 100);
+      const bestDay = daily.reduce((best, d) =>
+        d.completed > (best ? best.completed : -1) ? d : best, null);
+      const bestLabel = bestDay
+        ? new Date(bestDay.date + 'T00:00:00').toLocaleDateString('tr-TR', { day:'numeric', month:'short' })
+        : '—';
+
+      document.getElementById('aStatTotal').textContent = totalTasks;
+      document.getElementById('aStatDone').textContent  = totalDone;
+      document.getElementById('aStatRate').textContent  = `${rate}%`;
+      document.getElementById('aStatBest').textContent  = bestLabel;
+
+      // Labels (show every Nth label when range is large)
+      const labels = daily.map(d => {
+        const dt = new Date(d.date + 'T00:00:00');
+        return dt.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+      });
+      const step = daily.length > 30 ? Math.ceil(daily.length / 20) : 1;
+      const tickLabels = labels.map((l, i) => i % step === 0 ? l : '');
+
+      destroyCharts();
+
+      // ── Line chart: completed + total ──
+      chartLine = new Chart(document.getElementById('chartLine'), {
+        type: 'line',
+        data: {
+          labels: tickLabels,
+          datasets: [
+            {
+              label: 'Tamamlanan',
+              data: daily.map(d => d.completed),
+              borderColor: '#06b6d4',
+              backgroundColor: 'rgba(6,182,212,.12)',
+              tension: .35,
+              fill: true,
+              pointRadius: daily.length > 30 ? 0 : 3,
+            },
+            {
+              label: 'Toplam',
+              data: daily.map(d => d.total),
+              borderColor: 'rgba(100,116,139,.5)',
+              borderDash: [4, 3],
+              tension: .35,
+              fill: false,
+              pointRadius: 0,
+            },
+          ],
+        },
+        options: {
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { maxRotation: 0 } },
+            y: { grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true, ticks: { precision: 0 } },
+          },
+        },
+      });
+
+      // ── Stacked bar: completed vs incomplete ──
+      chartBar = new Chart(document.getElementById('chartBar'), {
+        type: 'bar',
+        data: {
+          labels: tickLabels,
+          datasets: [
+            {
+              label: 'Tamamlanan',
+              data: daily.map(d => d.completed),
+              backgroundColor: 'rgba(6,182,212,.7)',
+              borderRadius: 2,
+            },
+            {
+              label: 'Tamamlanmadı',
+              data: daily.map(d => d.total - d.completed),
+              backgroundColor: 'rgba(100,116,139,.3)',
+              borderRadius: 2,
+            },
+          ],
+        },
+        options: {
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { stacked: true, grid: { color: 'rgba(255,255,255,.05)' }, ticks: { maxRotation: 0 } },
+            y: { stacked: true, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true, ticks: { precision: 0 } },
+          },
+        },
+      });
+
+      // ── Doughnut: by category ──
+      const catColors = categories.map(c => {
+        const match = allCategories.find(a => a.name === c.name);
+        return match ? match.color : '#64748b';
+      });
+      chartDoughnut = new Chart(document.getElementById('chartDoughnut'), {
+        type: 'doughnut',
+        data: {
+          labels: categories.map(c => c.name),
+          datasets: [{
+            data: categories.map(c => c.total),
+            backgroundColor: catColors.map(c => c + 'bb'),
+            borderColor: catColors,
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 12, padding: 10 } },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const cat = categories[ctx.dataIndex];
+                  return ` ${cat.total} görev (${cat.completed} tamamlandı)`;
+                },
+              },
+            },
+          },
+          cutout: '60%',
+        },
+      });
+    }
+
+    function destroyCharts() {
+      [chartLine, chartBar, chartDoughnut].forEach(c => { if (c) c.destroy(); });
+      chartLine = chartBar = chartDoughnut = null;
+    }
 
     // ── Init ─────────────────────────────────────────────
     async function init() {
       updateDateLabel();
+      renderNotifStatus();
       await loadCategories();
       loadTasks(); // also calls buildTrend() internally
     }

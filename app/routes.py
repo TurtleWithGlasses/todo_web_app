@@ -7,7 +7,7 @@ from app.utils import (
     toggle_task_status, reset_all_tasks,
     load_daily_tasks, add_daily_task, update_daily_task,
     delete_daily_task, set_daily_task_status, get_daily_stats,
-    get_weekly_stats,
+    get_weekly_stats, get_analysis,
     load_categories, add_category, update_category, delete_category,
     seed_categories,
 )
@@ -226,3 +226,11 @@ def daily_weekly_stats():
     if not date:
         return jsonify({"error": "date required"}), 400
     return jsonify(get_weekly_stats(date))
+
+@main.route("/daily/analysis", methods=["GET"])
+def daily_analysis():
+    from_date = request.args.get("from")
+    to_date   = request.args.get("to")
+    if not from_date or not to_date:
+        return jsonify({"error": "from and to required"}), 400
+    return jsonify(get_analysis(from_date, to_date))

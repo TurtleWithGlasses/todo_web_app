@@ -162,6 +162,54 @@ def get_daily_stats(date: str):
         completed = sum(1 for t in tasks if t.status == "tamamlandı")
         return {"total": total, "completed": completed}
 
+def get_analysis(from_date: str, to_date: str):
+    """Return per-day stats and category breakdown for a date range."""
+    from datetime import date as DateType, timedelta
+    from collections import defaultdict
+
+    start = DateType.fromisoformat(from_date)
+    end   = DateType.fromisoformat(to_date)
+    if end < start:
+        start, end = end, start
+
+    days = []
+    cur = start
+    while cur <= end:
+        days.append(cur.isoformat())
+        cur += timedelta(days=1)
+
+    with SessionLocal() as db:
+        tasks = (
+            db.query(DailyTask)
+            .filter(DailyTask.date.in_(days))
+            .all()
+        )
+
+    totals    = defaultdict(int)
+    completed = defaultdict(int)
+    cat_total = defaultdict(int)
+    cat_done  = defaultdict(int)
+
+    for t in tasks:
+        totals[t.date]    += 1
+        cat_total[t.category or 'Diğer'] += 1
+        if t.status == 'tamamlandı':
+            completed[t.date] += 1
+            cat_done[t.category or 'Diğer'] += 1
+
+    daily = [
+        {'date': d, 'total': totals[d], 'completed': completed[d]}
+        for d in days
+    ]
+
+    categories = [
+        {'name': name, 'total': cat_total[name], 'completed': cat_done[name]}
+        for name in sorted(cat_total)
+    ]
+
+    return {'daily': daily, 'categories': categories}
+
+
 def get_weekly_stats(reference_date: str):
     """Return completion data for the 7 days ending on reference_date (inclusive)."""
     from datetime import date as DateType, timedelta
