@@ -148,6 +148,34 @@ def delete_daily_task(task_id: int):
             db.delete(task)
             db.commit()
 
+def move_daily_task(task_id: int, new_date: str):
+    with SessionLocal() as db:
+        task = db.get(DailyTask, task_id)
+        if task:
+            task.date = new_date
+            db.commit()
+
+def duplicate_daily_task(task_id: int, new_date: str):
+    with SessionLocal() as db:
+        task = db.get(DailyTask, task_id)
+        if not task:
+            return None
+        last = db.query(DailyTask).filter(DailyTask.date == new_date).order_by(DailyTask.position.desc()).first()
+        position = last.position + 1 if last else 0
+        new_task = DailyTask(
+            title=task.title,
+            description=task.description,
+            time=task.time,
+            category=task.category,
+            priority=task.priority,
+            date=new_date,
+            position=position,
+        )
+        db.add(new_task)
+        db.commit()
+        db.refresh(new_task)
+        return new_task
+
 def set_daily_task_status(task_id: int, status: str):
     with SessionLocal() as db:
         task = db.get(DailyTask, task_id)

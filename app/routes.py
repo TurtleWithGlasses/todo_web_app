@@ -7,7 +7,7 @@ from app.utils import (
     toggle_task_status, reset_all_tasks,
     load_daily_tasks, add_daily_task, update_daily_task,
     delete_daily_task, set_daily_task_status, get_daily_stats,
-    get_weekly_stats, get_analysis,
+    get_weekly_stats, get_analysis, move_daily_task, duplicate_daily_task,
     load_categories, add_category, update_category, delete_category,
     seed_categories,
 )
@@ -185,6 +185,26 @@ def daily_status(id):
 def daily_delete(id):
     delete_daily_task(id)
     return jsonify({"success": True})
+
+@main.route("/daily/tasks/<int:id>/move", methods=["POST"])
+def daily_move(id):
+    data = request.get_json()
+    date = data.get("date")
+    if not date:
+        return jsonify({"success": False, "error": "date required"}), 400
+    move_daily_task(id, date)
+    return jsonify({"success": True})
+
+@main.route("/daily/tasks/<int:id>/duplicate", methods=["POST"])
+def daily_duplicate(id):
+    data = request.get_json()
+    date = data.get("date")
+    if not date:
+        return jsonify({"success": False, "error": "date required"}), 400
+    task = duplicate_daily_task(id, date)
+    if not task:
+        return jsonify({"success": False, "error": "task not found"}), 404
+    return jsonify({"success": True, "id": task.id})
 
 @main.route("/daily/stats", methods=["GET"])
 def daily_stats():
