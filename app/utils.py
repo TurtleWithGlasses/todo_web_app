@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 from app.models import Base, Task, DailyTask, Category
 
@@ -148,14 +148,16 @@ def delete_daily_task(task_id: int):
             db.delete(task)
             db.commit()
 
-def move_daily_task(task_id: int, new_date: str):
+def move_daily_task(task_id: int, new_date: str, new_time: str = None):
     with SessionLocal() as db:
         task = db.get(DailyTask, task_id)
         if task:
             task.date = new_date
+            if new_time is not None:
+                task.time = new_time
             db.commit()
 
-def duplicate_daily_task(task_id: int, new_date: str):
+def duplicate_daily_task(task_id: int, new_date: str, new_time: str = None):
     with SessionLocal() as db:
         task = db.get(DailyTask, task_id)
         if not task:
@@ -165,7 +167,7 @@ def duplicate_daily_task(task_id: int, new_date: str):
         new_task = DailyTask(
             title=task.title,
             description=task.description,
-            time=task.time,
+            time=new_time if new_time is not None else task.time,
             category=task.category,
             priority=task.priority,
             date=new_date,
@@ -175,6 +177,39 @@ def duplicate_daily_task(task_id: int, new_date: str):
         db.commit()
         db.refresh(new_task)
         return new_task
+
+def create_repeat_tasks(task_id: int, dates: list, time: str):
+    with SessionLocal() as db:
+        source = db.get(DailyTask, task_id)
+        if not source:
+            return None
+        max_gid = db.query(func.max(DailyTask.repeat_group_id)).scalar()
+        group_id = (max_gid or 0) + 1
+        source.repeat_group_id = group_id
+        if time:
+            source.time = time
+        for date in dates:
+            if date == source.date:
+                continue
+            last = db.query(DailyTask).filter(DailyTask.date == date).order_by(DailyTask.position.desc()).first()
+            position = last.position + 1 if last else 0
+            db.add(DailyTask(
+                title=source.title,
+                description=source.description,
+                time=time if time else source.time,
+                category=source.category,
+                priority=source.priority,
+                date=date,
+                position=position,
+                repeat_group_id=group_id,
+            ))
+        db.commit()
+        return group_id
+
+def delete_repeat_group(group_id: int):
+    with SessionLocal() as db:
+        db.query(DailyTask).filter(DailyTask.repeat_group_id == group_id).delete()
+        db.commit()
 
 def set_daily_task_status(task_id: int, status: str):
     with SessionLocal() as db:

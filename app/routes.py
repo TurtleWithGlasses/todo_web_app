@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from app.models import Base, Task
 from app.utils import (
@@ -8,6 +8,7 @@ from app.utils import (
     load_daily_tasks, add_daily_task, update_daily_task,
     delete_daily_task, set_daily_task_status, get_daily_stats,
     get_weekly_stats, get_analysis, move_daily_task, duplicate_daily_task,
+    create_repeat_tasks, delete_repeat_group,
     load_categories, add_category, update_category, delete_category,
     seed_categories,
 )
@@ -17,6 +18,12 @@ main = Blueprint("main", __name__)
 engine = create_engine("sqlite:///todo.db", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
 Base.metadata.create_all(engine)
+with engine.connect() as _conn:
+    try:
+        _conn.execute(text("ALTER TABLE daily_tasks ADD COLUMN repeat_group_id INTEGER"))
+        _conn.commit()
+    except Exception:
+        pass  # column already exists
 seed_categories()
 
 @main.route("/")
@@ -132,6 +139,7 @@ def daily_get_tasks():
             "status": t.status,
             "date": t.date,
             "position": t.position,
+            "repeat_group_id": t.repeat_group_id,
         }
         for t in tasks
     ])
@@ -192,7 +200,8 @@ def daily_move(id):
     date = data.get("date")
     if not date:
         return jsonify({"success": False, "error": "date required"}), 400
-    move_daily_task(id, date)
+    time = data.get("time") or None
+    move_daily_task(id, date, new_time=time)
     return jsonify({"success": True})
 
 @main.route("/daily/tasks/<int:id>/duplicate", methods=["POST"])
@@ -201,10 +210,28 @@ def daily_duplicate(id):
     date = data.get("date")
     if not date:
         return jsonify({"success": False, "error": "date required"}), 400
-    task = duplicate_daily_task(id, date)
+    time = data.get("time") or None
+    task = duplicate_daily_task(id, date, new_time=time)
     if not task:
         return jsonify({"success": False, "error": "task not found"}), 404
     return jsonify({"success": True, "id": task.id})
+
+@main.route("/daily/tasks/<int:id>/repeat", methods=["POST"])
+def daily_repeat(id):
+    data = request.get_json()
+    dates = data.get("dates", [])
+    if not dates:
+        return jsonify({"success": False, "error": "dates required"}), 400
+    time = data.get("time", "")
+    group_id = create_repeat_tasks(id, dates, time)
+    if group_id is None:
+        return jsonify({"success": False, "error": "task not found"}), 404
+    return jsonify({"success": True, "group_id": group_id})
+
+@main.route("/daily/repeat-group/<int:group_id>", methods=["DELETE"])
+def daily_delete_repeat_group(group_id):
+    delete_repeat_group(group_id)
+    return jsonify({"success": True})
 
 @main.route("/daily/stats", methods=["GET"])
 def daily_stats():

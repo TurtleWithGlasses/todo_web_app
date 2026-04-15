@@ -31,3 +31,4 @@ class DailyTask(Base):
     status = Column(String, default="yapılacak")  # yapılacak | yapılıyor | tamamlandı
     date = Column(String, nullable=False)      # ISO date string e.g. "2026-03-10"
     position = Column(Integer, nullable=False, default=0)
+    repeat_group_id = Column(Integer, nullable=True)  # NULL = standalone, N = repeat group

@@ -317,8 +317,19 @@
     .d-card-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 
     .d-time-badge {
-      display: flex; align-items: center; gap: 4px;
-      font-size: .78rem; color: var(--text-muted);
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: .78rem;
+      font-weight: 500;
+      color: var(--da);
+      background: var(--da-glow);
+      padding: 2px 8px;
+      border-radius: 8px;
+      margin-top: 4px;
+    }
+    .d-time-badge.no-time {
+      color: var(--text-muted);
+      background: transparent;
+      font-weight: 400;
     }
 
     .d-tag {
@@ -374,8 +385,159 @@
       transition: all .2s;
       padding: 0;
     }
-    .d-move-btn:hover { background: rgba(99,102,241,.12); color: #6366f1; }
-    .d-copy-btn:hover { background: rgba(16,185,129,.12); color: #10b981; }
+    .d-move-btn:hover   { background: rgba(99,102,241,.12); color: #6366f1; }
+    .d-copy-btn:hover   { background: rgba(16,185,129,.12); color: #10b981; }
+
+    .d-repeat-btn {
+      width: 28px; height: 28px;
+      background: transparent;
+      border: none;
+      border-radius: 7px;
+      color: var(--text-muted);
+      font-size: .8rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s;
+      padding: 0;
+    }
+    .d-repeat-btn:hover   { background: rgba(245,158,11,.12); color: #f59e0b; }
+    .d-repeat-btn.active  { color: #f59e0b; }
+
+    /* ── New-task repeat toggle ─────────────────── */
+    .d-new-repeat-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 0 4px;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    .d-new-repeat-row label {
+      display: flex; align-items: center; gap: 7px;
+      font-size: .84rem; color: var(--text-secondary); cursor: pointer;
+      user-select: none;
+    }
+    .d-new-repeat-row input[type=checkbox] { accent-color: var(--da); width: 15px; height: 15px; cursor: pointer; }
+
+    /* ── Repeat modal ───────────────────────────── */
+    .d-rep-mode-tabs {
+      display: flex; gap: 6px; margin-bottom: 12px;
+    }
+    .d-rep-mode-btn {
+      flex: 1; padding: 7px; border-radius: 8px;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      color: var(--text-muted); font-family: 'Outfit', sans-serif;
+      font-size: .82rem; font-weight: 500; cursor: pointer;
+      transition: all .2s;
+    }
+    .d-rep-mode-btn.active {
+      background: rgba(6,182,212,.12); border-color: var(--da);
+      color: var(--da);
+    }
+    .d-rep-dow-row {
+      display: flex; gap: 5px; margin-top: 10px; justify-content: center;
+    }
+    .d-rep-dow-btn {
+      width: 38px; height: 38px; border-radius: 8px;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      color: var(--text-muted); font-family: 'Outfit', sans-serif;
+      font-size: .78rem; font-weight: 600; cursor: pointer;
+      transition: all .15s;
+    }
+    .d-rep-dow-btn:hover  { background: var(--bg-card-hover); color: var(--text-primary); }
+    .d-rep-dow-btn.active { background: rgba(245,158,11,.2); border-color: #f59e0b; color: #f59e0b; }
+    .d-rep-weekly-range {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;
+    }
+    .d-rep-weekly-preview {
+      margin-top: 10px; font-size: .82rem; color: var(--text-muted); text-align: center;
+    }
+    .d-rep-weekly-preview strong { color: #f59e0b; }
+    .d-rep-cal-wrap {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .d-rep-cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
+    .d-rep-cal-header span { font-weight: 600; font-size: .9rem; }
+    .d-rep-cal-nav {
+      background: transparent; border: none;
+      color: var(--text-secondary); font-size: 1.1rem;
+      padding: 2px 8px; border-radius: 6px; cursor: pointer;
+      transition: color .2s;
+    }
+    .d-rep-cal-nav:hover { color: var(--text-primary); }
+    .d-rep-cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 2px; padding: 8px;
+      background: var(--bg-secondary);
+    }
+    .d-rep-cal-dow {
+      text-align: center; font-size: .65rem;
+      font-weight: 600; color: var(--text-muted);
+      padding: 4px 0;
+      text-transform: uppercase;
+    }
+    .d-rep-cal-day {
+      text-align: center; font-size: .8rem;
+      padding: 6px 2px; border-radius: 6px;
+      cursor: pointer; transition: all .15s;
+      color: var(--text-secondary);
+    }
+    .d-rep-cal-day:hover:not(.other-month):not(.source) {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+    .d-rep-cal-day.other-month { color: var(--text-muted); opacity: .4; cursor: default; }
+    .d-rep-cal-day.today       { color: var(--da); font-weight: 600; }
+    .d-rep-cal-day.source      {
+      background: rgba(6,182,212,.15); color: var(--da);
+      font-weight: 700; cursor: default;
+      border: 1px solid rgba(6,182,212,.3);
+    }
+    .d-rep-cal-day.selected    {
+      background: rgba(245,158,11,.2); color: #f59e0b;
+      font-weight: 600; border: 1px solid rgba(245,158,11,.4);
+    }
+    .d-rep-selected-wrap {
+      margin-top: 10px;
+      min-height: 28px;
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .d-rep-date-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(245,158,11,.15); color: #f59e0b;
+      border: 1px solid rgba(245,158,11,.3);
+      padding: 3px 8px; border-radius: 12px;
+      font-size: .76rem; cursor: pointer;
+      transition: all .15s;
+    }
+    .d-rep-date-tag:hover { background: rgba(245,158,11,.25); }
+
+    /* ── Repeat group action menu ───────────────── */
+    .d-rep-menu {
+      position: absolute; z-index: 200;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      min-width: 180px;
+    }
+    .d-rep-menu-item {
+      display: block; width: 100%;
+      background: transparent; border: none;
+      color: var(--text-secondary);
+      font-family: 'Outfit', sans-serif;
+      font-size: .84rem; text-align: left;
+      padding: 8px 12px; border-radius: 7px;
+      cursor: pointer; transition: all .15s;
+    }
+    .d-rep-menu-item:hover            { background: var(--bg-card-hover); color: var(--text-primary); }
+    .d-rep-menu-item.danger:hover     { background: rgba(239,68,68,.12); color: var(--danger); }
 
     .d-empty {
       text-align: center;
@@ -1316,7 +1478,7 @@
       <div class="d-form-row">
         <div class="d-fg">
           <label class="d-fl">Saat</label>
-          <input class="d-fi" id="fTime" type="time" />
+          <input class="d-fi" id="fTime" type="text" placeholder="15:00" maxlength="5" />
         </div>
         <div class="d-fg">
           <label class="d-fl">Kategori</label>
@@ -1334,6 +1496,13 @@
           <option value="acil">Acil</option>
           <option value="düşük">Düşük</option>
         </select>
+      </div>
+
+      <div class="d-new-repeat-row" id="newRepeatRow">
+        <label>
+          <input type="checkbox" id="newTaskRepeatCheck" />
+          🔁 Kaydet ve tekrarlayan görev oluştur
+        </label>
       </div>
 
       <div class="d-modal-foot">
@@ -1431,13 +1600,95 @@
     </div>
   </div>
 
+  <!-- REPEAT MODAL -->
+  <div class="d-overlay" id="repeatOverlay" onclick="handleRepeatOverlayClick(event)">
+    <div class="d-modal" style="max-width:480px">
+      <h2>Tekrarlayan Görev</h2>
+
+      <div class="d-rep-mode-tabs">
+        <button class="d-rep-mode-btn active" id="repModeSpecific" onclick="setRepeatMode('specific')">📅 Belirli Tarihler</button>
+        <button class="d-rep-mode-btn"        id="repModeWeekly"   onclick="setRepeatMode('weekly')">🔁 Haftalık Tekrar</button>
+      </div>
+
+      <div class="d-fg">
+        <label class="d-fl">Saat (opsiyonel)</label>
+        <input class="d-fi" id="repeatTime" type="text" placeholder="15:00" maxlength="5" />
+      </div>
+
+      <!-- SPECIFIC MODE -->
+      <div id="repSpecificSection">
+      <div class="d-rep-cal-wrap">
+        <div class="d-rep-cal-header">
+          <button class="d-rep-cal-nav" onclick="repCalPrev()">&#8249;</button>
+          <span id="repCalLabel"></span>
+          <button class="d-rep-cal-nav" onclick="repCalNext()">&#8250;</button>
+        </div>
+        <div class="d-rep-cal-grid" id="repCalGrid">
+          <div class="d-rep-cal-dow">Pt</div>
+          <div class="d-rep-cal-dow">Sa</div>
+          <div class="d-rep-cal-dow">Ça</div>
+          <div class="d-rep-cal-dow">Pe</div>
+          <div class="d-rep-cal-dow">Cu</div>
+          <div class="d-rep-cal-dow">Ct</div>
+          <div class="d-rep-cal-dow">Pz</div>
+        </div>
+      </div>
+
+      <div class="d-rep-selected-wrap" id="repSelectedDates">
+        <span style="color:var(--text-muted);font-size:.82rem">Tarih seçmek için takvime tıkla</span>
+      </div>
+      </div><!-- end repSpecificSection -->
+
+      <!-- WEEKLY MODE -->
+      <div id="repWeeklySection" style="display:none">
+        <div class="d-rep-dow-row">
+          <button class="d-rep-dow-btn" data-dow="0" onclick="toggleWeekDay(0)">Pt</button>
+          <button class="d-rep-dow-btn" data-dow="1" onclick="toggleWeekDay(1)">Sa</button>
+          <button class="d-rep-dow-btn" data-dow="2" onclick="toggleWeekDay(2)">Ça</button>
+          <button class="d-rep-dow-btn" data-dow="3" onclick="toggleWeekDay(3)">Pe</button>
+          <button class="d-rep-dow-btn" data-dow="4" onclick="toggleWeekDay(4)">Cu</button>
+          <button class="d-rep-dow-btn" data-dow="5" onclick="toggleWeekDay(5)">Ct</button>
+          <button class="d-rep-dow-btn" data-dow="6" onclick="toggleWeekDay(6)">Pz</button>
+        </div>
+        <div class="d-rep-weekly-range">
+          <div class="d-fg">
+            <label class="d-fl">Başlangıç</label>
+            <input class="d-fi" id="repWeeklyFrom" type="date" oninput="updateWeeklyPreview()" />
+          </div>
+          <div class="d-fg">
+            <label class="d-fl">Bitiş</label>
+            <input class="d-fi" id="repWeeklyTo" type="date" oninput="updateWeeklyPreview()" />
+          </div>
+        </div>
+        <div class="d-rep-weekly-preview" id="repWeeklyPreview">Gün ve tarih aralığı seç</div>
+      </div>
+
+      <div class="d-modal-foot" style="margin-top:16px">
+        <button class="d-btn-cancel" onclick="closeRepeatModal()">İptal</button>
+        <button class="d-btn-save" id="repSubmitBtn" onclick="submitRepeat()">Uygula</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPEAT GROUP MENU (floating) -->
+  <div class="d-rep-menu" id="repMenu" style="display:none">
+    <button class="d-rep-menu-item" onclick="(function(){ const id=repMenuTaskId; closeRepMenu(); deleteTask(id); })()">Bu tekrarı sil</button>
+    <button class="d-rep-menu-item danger" onclick="(function(){ const gid=repMenuGroupId; closeRepMenu(); deleteRepeatGroup(gid); })()">Tüm tekrarları sil</button>
+  </div>
+
   <!-- MOVE / COPY MODAL -->
   <div class="d-overlay" id="transferOverlay" onclick="handleTransferOverlayClick(event)">
     <div class="d-modal" style="max-width:380px">
       <h2 id="transferTitle">Görevi Taşı</h2>
-      <div class="d-fg">
-        <label class="d-fl">Hedef Tarih</label>
-        <input class="d-fi" id="transferDate" type="date" />
+      <div class="d-form-row">
+        <div class="d-fg">
+          <label class="d-fl">Hedef Tarih</label>
+          <input class="d-fi" id="transferDate" type="date" />
+        </div>
+        <div class="d-fg">
+          <label class="d-fl">Saat (opsiyonel)</label>
+          <input class="d-fi" id="transferTime" type="text" placeholder="15:00" maxlength="5" />
+        </div>
       </div>
       <div class="d-modal-foot">
         <button class="d-btn-cancel" onclick="closeTransferModal()">İptal</button>
@@ -1585,13 +1836,20 @@
       const catTag  = t.category
         ? `<span class="d-tag" style="background:${catColor}22;color:${catColor};border:1px solid ${catColor}44">${escHtml(t.category)}</span>` : '';
       const timeTag = t.time
-        ? `<span class="d-time-badge">&#128336; ${t.time}</span>` : '';
+        ? `<span class="d-time-badge">&#128336; ${t.time}</span>`
+        : `<span class="d-time-badge no-time">&#128336; —</span>`;
       const priLabel = { acil:'Acil', orta:'Orta', 'düşük':'Düşük' }[t.priority] || t.priority;
+      const repeatBtn = t.repeat_group_id
+        ? `<button class="d-repeat-btn active" onclick="openRepMenu(event,${t.id},${t.repeat_group_id})" title="Tekrar grubu">🔁</button>`
+        : `<button class="d-repeat-btn" onclick="openRepeatModal(${t.id})" title="Tekrarlayan görev yap">🔁</button>`;
 
       return `
         <div class="d-card ${t.status}" data-id="${t.id}">
           <div class="d-card-top">
-            <span class="d-card-title">${escHtml(t.title)}</span>
+            <div>
+              <span class="d-card-title">${escHtml(t.title)}</span>
+              <div>${timeTag}</div>
+            </div>
             <button class="d-status-pill pill-${t.status}"
                     onclick="cycleStatus(${t.id},'${STATUS_CYCLE[t.status]}')"
                     title="Durumu değiştir">
@@ -1601,11 +1859,11 @@
           ${t.description ? `<div class="d-card-desc">${escHtml(t.description)}</div>` : ''}
           <div class="d-card-footer">
             <div class="d-card-meta">
-              ${timeTag}
               ${catTag}
               <span class="d-pri-tag pri-${t.priority}">${priLabel}</span>
             </div>
             <button class="d-edit-btn" onclick="openEditModal(${t.id})" title="Düzenle">✏</button>
+            ${repeatBtn}
             <button class="d-move-btn" onclick="openTransferModal(${t.id},'move')" title="Başka tarihe taşı">→</button>
             <button class="d-copy-btn" onclick="openTransferModal(${t.id},'copy')" title="Başka tarihe kopyala">⧉</button>
             <button class="d-del-btn" onclick="deleteTask(${t.id})" title="Sil">✕</button>
@@ -1809,6 +2067,8 @@
       editingTaskId = null;
       document.getElementById('modalTitle').textContent = 'Yeni Görev Ekle';
       document.getElementById('modalSubmitBtn').textContent = 'Ekle';
+      document.getElementById('newRepeatRow').style.display = '';
+      document.getElementById('newTaskRepeatCheck').checked = false;
       document.getElementById('overlay').classList.add('open');
       document.getElementById('fTitle').focus();
     }
@@ -1824,6 +2084,7 @@
       document.getElementById('fTime').value     = task.time || '';
       document.getElementById('fCategory').value = task.category || '';
       document.getElementById('fPriority').value = task.priority || 'orta';
+      document.getElementById('newRepeatRow').style.display = 'none';
       document.getElementById('overlay').classList.add('open');
       document.getElementById('fTitle').focus();
     }
@@ -1847,6 +2108,8 @@
       document.getElementById('transferTitle').textContent =
         mode === 'move' ? 'Görevi Taşı' : 'Görevi Kopyala';
       document.getElementById('transferDate').value = isoDate(currentDate);
+      const task = allTasks.find(t => t.id === id);
+      document.getElementById('transferTime').value = task ? (task.time || '') : '';
       document.getElementById('transferOverlay').classList.add('open');
     }
 
@@ -1863,13 +2126,14 @@
     async function submitTransfer() {
       const date = document.getElementById('transferDate').value;
       if (!date || !transferTaskId) return;
+      const time = document.getElementById('transferTime').value;
       const endpoint = transferMode === 'move'
         ? `/daily/tasks/${transferTaskId}/move`
         : `/daily/tasks/${transferTaskId}/duplicate`;
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date }),
+        body: JSON.stringify({ date, time }),
       });
       if (res.ok) {
         closeTransferModal();
@@ -1895,15 +2159,20 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+        closeModal();
+        await loadTasks();
       } else {
-        await fetch('/daily/add', {
+        const shouldRepeat = document.getElementById('newTaskRepeatCheck').checked;
+        const res  = await fetch('/daily/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, date: isoDate(currentDate) }),
         });
+        const data = await res.json();
+        closeModal();
+        await loadTasks();
+        if (shouldRepeat && data.id) openRepeatModal(data.id);
       }
-      closeModal();
-      await loadTasks();
     }
 
     // ── Date navigation ───────────────────────────────────
@@ -1920,8 +2189,10 @@
 
     // ── Keyboard shortcuts ────────────────────────────────
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeTransferModal(); }
+      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); }
       if (e.key === 'Enter' && document.getElementById('overlay').classList.contains('open')) {
+        const tag = document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
         e.preventDefault();
         submitTask();
       }
@@ -2408,9 +2679,253 @@
     }
 
     // ── Init ─────────────────────────────────────────────
+    // ── Repeat task ──────────────────────────────────────
+    let repeatTaskId        = null;
+    let repCalYear          = new Date().getFullYear();
+    let repCalMonth         = new Date().getMonth();
+    let selectedRepeatDates = new Set();
+    let repeatMode          = 'specific'; // 'specific' | 'weekly'
+    let selectedWeekDays    = new Set();  // Mon=0 … Sun=6
+
+    function openRepeatModal(id) {
+      repeatTaskId = id;
+      selectedRepeatDates = new Set();
+      const task = allTasks.find(t => t.id === id);
+      document.getElementById('repeatTime').value = task ? (task.time || '') : '';
+      repCalYear  = currentDate.getFullYear();
+      repCalMonth = currentDate.getMonth();
+      renderRepeatCalendar();
+      renderRepSelectedDates();
+      document.getElementById('repSubmitBtn').textContent = 'Uygula';
+      document.getElementById('repeatOverlay').classList.add('open');
+    }
+
+    function setRepeatMode(mode) {
+      repeatMode = mode;
+      document.getElementById('repModeSpecific').classList.toggle('active', mode === 'specific');
+      document.getElementById('repModeWeekly').classList.toggle('active',   mode === 'weekly');
+      document.getElementById('repSpecificSection').style.display = mode === 'specific' ? '' : 'none';
+      document.getElementById('repWeeklySection').style.display   = mode === 'weekly'   ? '' : 'none';
+    }
+
+    function toggleWeekDay(dow) {
+      if (selectedWeekDays.has(dow)) selectedWeekDays.delete(dow);
+      else selectedWeekDays.add(dow);
+      document.querySelectorAll('.d-rep-dow-btn').forEach(btn => {
+        btn.classList.toggle('active', selectedWeekDays.has(parseInt(btn.dataset.dow)));
+      });
+      updateWeeklyPreview();
+    }
+
+    function computeWeeklyDates() {
+      const from = document.getElementById('repWeeklyFrom').value;
+      const to   = document.getElementById('repWeeklyTo').value;
+      if (!from || !to || selectedWeekDays.size === 0) return new Set();
+      const task = allTasks.find(t => t.id === repeatTaskId);
+      const sourceIso = task ? task.date : null;
+      const result = new Set();
+      const end = new Date(to + 'T00:00:00');
+      for (let d = new Date(from + 'T00:00:00'); d <= end; d.setDate(d.getDate() + 1)) {
+        const dow = (d.getDay() + 6) % 7; // Mon=0…Sun=6
+        if (selectedWeekDays.has(dow)) {
+          const iso = isoDate(d);
+          if (iso !== sourceIso) result.add(iso);
+        }
+      }
+      return result;
+    }
+
+    function updateWeeklyPreview() {
+      const dates = computeWeeklyDates();
+      const el = document.getElementById('repWeeklyPreview');
+      const btn = document.getElementById('repSubmitBtn');
+      if (dates.size === 0) {
+        el.innerHTML = 'Gün ve tarih aralığı seç';
+        btn.textContent = 'Uygula';
+      } else {
+        el.innerHTML = `<strong>${dates.size} tarih</strong> seçilecek`;
+        btn.textContent = `Uygula (${dates.size} tarih)`;
+      }
+    }
+
+    function closeRepeatModal() {
+      document.getElementById('repeatOverlay').classList.remove('open');
+      repeatTaskId = null;
+      selectedRepeatDates = new Set();
+      selectedWeekDays    = new Set();
+      setRepeatMode('specific');
+      document.querySelectorAll('.d-rep-dow-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('repWeeklyFrom').value = '';
+      document.getElementById('repWeeklyTo').value   = '';
+      document.getElementById('repWeeklyPreview').textContent = 'Gün ve tarih aralığı seç';
+      document.getElementById('repSubmitBtn').textContent = 'Uygula';
+    }
+
+    function handleRepeatOverlayClick(e) {
+      if (e.target === document.getElementById('repeatOverlay')) closeRepeatModal();
+    }
+
+    function repCalPrev() {
+      repCalMonth--;
+      if (repCalMonth < 0) { repCalMonth = 11; repCalYear--; }
+      renderRepeatCalendar();
+    }
+
+    function repCalNext() {
+      repCalMonth++;
+      if (repCalMonth > 11) { repCalMonth = 0; repCalYear++; }
+      renderRepeatCalendar();
+    }
+
+    function renderRepeatCalendar() {
+      document.getElementById('repCalLabel').textContent = `${CAL_MONTHS[repCalMonth]} ${repCalYear}`;
+      const todayIso  = isoDate(new Date());
+      const task      = allTasks.find(t => t.id === repeatTaskId);
+      const sourceIso = task ? task.date : null;
+
+      const firstDayJS  = new Date(repCalYear, repCalMonth, 1).getDay();
+      const startOffset = (firstDayJS + 6) % 7;
+      const daysInMonth = new Date(repCalYear, repCalMonth + 1, 0).getDate();
+      const daysInPrev  = new Date(repCalYear, repCalMonth, 0).getDate();
+
+      const days = [];
+      for (let i = startOffset - 1; i >= 0; i--) {
+        const d = daysInPrev - i;
+        const m = repCalMonth === 0 ? 11 : repCalMonth - 1;
+        const y = repCalMonth === 0 ? repCalYear - 1 : repCalYear;
+        days.push({ day: d, iso: `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, other: true });
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        days.push({ day: d, iso: `${repCalYear}-${String(repCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, other: false });
+      }
+      const rem = 7 - (days.length % 7);
+      if (rem < 7) {
+        for (let d = 1; d <= rem; d++) {
+          const m = repCalMonth === 11 ? 0 : repCalMonth + 1;
+          const y = repCalMonth === 11 ? repCalYear + 1 : repCalYear;
+          days.push({ day: d, iso: `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, other: true });
+        }
+      }
+
+      const grid    = document.getElementById('repCalGrid');
+      const headers = [...grid.querySelectorAll('.d-rep-cal-dow')];
+      grid.innerHTML = '';
+      headers.forEach(h => grid.appendChild(h));
+
+      days.forEach(({ day, iso, other }) => {
+        const isSource   = iso === sourceIso;
+        const isSelected = selectedRepeatDates.has(iso);
+        const div = document.createElement('div');
+        div.className = ['d-rep-cal-day',
+          other    ? 'other-month' : '',
+          iso === todayIso ? 'today' : '',
+          isSource   ? 'source'   : '',
+          isSelected ? 'selected' : '',
+        ].filter(Boolean).join(' ');
+        div.textContent = day;
+        if (!other && !isSource) div.onclick = () => toggleRepeatDate(iso);
+        grid.appendChild(div);
+      });
+    }
+
+    function toggleRepeatDate(iso) {
+      if (selectedRepeatDates.has(iso)) selectedRepeatDates.delete(iso);
+      else selectedRepeatDates.add(iso);
+      renderRepeatCalendar();
+      renderRepSelectedDates();
+      const n = selectedRepeatDates.size;
+      document.getElementById('repSubmitBtn').textContent = n > 0 ? `Uygula (${n} tarih)` : 'Uygula';
+    }
+
+    function renderRepSelectedDates() {
+      const el = document.getElementById('repSelectedDates');
+      if (selectedRepeatDates.size === 0) {
+        el.innerHTML = '<span style="color:var(--text-muted);font-size:.82rem">Tarih seçmek için takvime tıkla</span>';
+        return;
+      }
+      el.innerHTML = [...selectedRepeatDates].sort().map(iso => {
+        const label = new Date(iso + 'T00:00:00').toLocaleDateString('tr-TR', { day:'numeric', month:'short' });
+        return `<span class="d-rep-date-tag" onclick="toggleRepeatDate('${iso}')">${label} ✕</span>`;
+      }).join('');
+    }
+
+    async function submitRepeat() {
+      const dates = repeatMode === 'weekly'
+        ? [...computeWeeklyDates()]
+        : [...selectedRepeatDates];
+      if (!repeatTaskId || dates.length === 0) return;
+      const time = document.getElementById('repeatTime').value;
+      const res = await fetch(`/daily/tasks/${repeatTaskId}/repeat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dates, time }),
+      });
+      if (res.ok) { closeRepeatModal(); loadTasks(); }
+    }
+
+    // ── Repeat group menu ─────────────────────────────────
+    let repMenuTaskId  = null;
+    let repMenuGroupId = null;
+
+    function openRepMenu(e, taskId, groupId) {
+      e.stopPropagation();
+      repMenuTaskId  = taskId;
+      repMenuGroupId = groupId;
+      const menu = document.getElementById('repMenu');
+      const btn  = e.currentTarget;
+      const rect = btn.getBoundingClientRect();
+      menu.style.top  = (rect.bottom + 6 + window.scrollY) + 'px';
+      menu.style.left = Math.max(8, rect.left - 100 + window.scrollX) + 'px';
+      menu.style.display = 'block';
+    }
+
+    function closeRepMenu() {
+      document.getElementById('repMenu').style.display = 'none';
+      repMenuTaskId = repMenuGroupId = null;
+    }
+
+    async function deleteRepeatGroup(groupId) {
+      await fetch(`/daily/repeat-group/${groupId}`, { method: 'DELETE' });
+      loadTasks();
+    }
+
+    document.addEventListener('click', e => {
+      const menu = document.getElementById('repMenu');
+      if (menu.style.display === 'block' && !menu.contains(e.target)) closeRepMenu();
+    });
+
+    // ── Time input auto-formatter (24h, no AM/PM) ────────
+    function setupTimeInput(id) {
+      const el = document.getElementById(id);
+      el.addEventListener('keydown', function(e) {
+        // Allow: backspace, delete, tab, arrows, home, end
+        if ([8,9,35,36,37,38,39,40,46].includes(e.keyCode)) return;
+        // Block non-digit keys (except colon for manual entry)
+        if (!/[\d:]/.test(e.key)) { e.preventDefault(); return; }
+      });
+      el.addEventListener('input', function() {
+        let digits = this.value.replace(/\D/g, '').slice(0, 4);
+        if (digits.length >= 3) {
+          this.value = digits.slice(0, 2) + ':' + digits.slice(2);
+        } else {
+          this.value = digits;
+        }
+      });
+      el.addEventListener('blur', function() {
+        const m = this.value.match(/^(\d{1,2}):(\d{2})$/);
+        if (!m) { this.value = ''; return; }
+        const h = parseInt(m[1], 10), min = parseInt(m[2], 10);
+        if (h > 23 || min > 59) { this.value = ''; return; }
+        this.value = String(h).padStart(2, '0') + ':' + String(min).padStart(2, '0');
+      });
+    }
+
     async function init() {
       updateDateLabel();
       renderNotifStatus();
+      setupTimeInput('fTime');
+      setupTimeInput('transferTime');
+      setupTimeInput('repeatTime');
       await loadCategories();
       loadTasks(); // also calls buildTrend() internally
     }
