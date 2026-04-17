@@ -8,7 +8,7 @@ from app.utils import (
     load_daily_tasks, add_daily_task, update_daily_task,
     delete_daily_task, set_daily_task_status, get_daily_stats,
     get_weekly_stats, get_analysis, move_daily_task, duplicate_daily_task,
-    create_repeat_tasks, delete_repeat_group,
+    create_repeat_tasks, delete_repeat_group, update_repeat_group, get_month_dots,
     load_categories, add_category, update_category, delete_category,
     seed_categories,
 )
@@ -176,7 +176,10 @@ def daily_edit(id):
     data = request.get_json()
     allowed = {"title", "description", "time", "category", "priority"}
     fields = {k: v for k, v in data.items() if k in allowed}
-    update_daily_task(id, **fields)
+    if data.get("apply_to_group") and data.get("group_id"):
+        update_repeat_group(data["group_id"], **fields)
+    else:
+        update_daily_task(id, **fields)
     return jsonify({"success": True})
 
 @main.route("/daily/status/<int:id>", methods=["POST"])
@@ -244,6 +247,14 @@ def daily_stats():
 def categories_list():
     cats = load_categories()
     return jsonify([{"id": c.id, "name": c.name, "color": c.color, "position": c.position} for c in cats])
+
+@main.route("/daily/month-dots", methods=["GET"])
+def daily_month_dots():
+    year  = request.args.get("year",  type=int)
+    month = request.args.get("month", type=int)
+    if not year or not month:
+        return jsonify({"error": "year and month required"}), 400
+    return jsonify(get_month_dots(year, month))
 
 @main.route("/daily/categories", methods=["POST"])
 def categories_add():

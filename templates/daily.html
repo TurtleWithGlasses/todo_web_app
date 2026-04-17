@@ -403,18 +403,19 @@
     .d-repeat-btn.active  { color: #f59e0b; }
 
     /* ── New-task repeat toggle ─────────────────── */
-    .d-new-repeat-row {
+    .d-new-repeat-row, .d-edit-all-row {
       display: flex; align-items: center; gap: 8px;
       padding: 10px 0 4px;
       border-top: 1px solid var(--border);
       margin-top: 8px;
     }
-    .d-new-repeat-row label {
+    .d-new-repeat-row label, .d-edit-all-row label {
       display: flex; align-items: center; gap: 7px;
       font-size: .84rem; color: var(--text-secondary); cursor: pointer;
       user-select: none;
     }
-    .d-new-repeat-row input[type=checkbox] { accent-color: var(--da); width: 15px; height: 15px; cursor: pointer; }
+    .d-new-repeat-row input[type=checkbox],
+    .d-edit-all-row  input[type=checkbox] { accent-color: #f59e0b; width: 15px; height: 15px; cursor: pointer; }
 
     /* ── Repeat modal ───────────────────────────── */
     .d-rep-mode-tabs {
@@ -1034,8 +1035,8 @@
       letter-spacing: .04em;
     }
     .d-cal-day {
-      text-align: center;
-      padding: 7px 2px;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 5px 2px;
       font-size: .8rem;
       border-radius: 7px;
       cursor: pointer;
@@ -1054,6 +1055,8 @@
       opacity: 1 !important;
     }
     .d-cal-day.today.selected { box-shadow: 0 0 10px var(--da-glow); }
+    .d-cal-dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; min-height: 6px; }
+    .d-cal-dot  { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
 
     /* ── CATEGORY MANAGER MODAL ──────────────────────────── */
     .d-section-title-row {
@@ -1498,6 +1501,13 @@
         </select>
       </div>
 
+      <div class="d-edit-all-row" id="editAllRow" style="display:none">
+        <label>
+          <input type="checkbox" id="editAllRepeatsCheck" />
+          🔁 Tüm tekrarları da güncelle
+        </label>
+      </div>
+
       <div class="d-new-repeat-row" id="newRepeatRow">
         <label>
           <input type="checkbox" id="newTaskRepeatCheck" />
@@ -1704,8 +1714,9 @@
     let allCategories  = [];
     let activeCat      = 'all';
     let activePriority = null;
-    let editingTaskId  = null;
-    let transferTaskId = null;
+    let editingTaskId    = null;
+    let editingGroupId   = null;
+    let transferTaskId   = null;
     let transferMode   = null; // 'move' | 'copy'
 
     // ── Pomodoro state ────────────────────────────────────
@@ -2079,22 +2090,28 @@
       editingTaskId = id;
       document.getElementById('modalTitle').textContent = 'Görevi Düzenle';
       document.getElementById('modalSubmitBtn').textContent = 'Kaydet';
+      editingGroupId = task.repeat_group_id || null;
       document.getElementById('fTitle').value    = task.title;
       document.getElementById('fDesc').value     = task.description || '';
       document.getElementById('fTime').value     = task.time || '';
       document.getElementById('fCategory').value = task.category || '';
       document.getElementById('fPriority').value = task.priority || 'orta';
-      document.getElementById('newRepeatRow').style.display = 'none';
+      document.getElementById('newRepeatRow').style.display  = 'none';
+      document.getElementById('editAllRow').style.display    = editingGroupId ? '' : 'none';
+      document.getElementById('editAllRepeatsCheck').checked = false;
       document.getElementById('overlay').classList.add('open');
       document.getElementById('fTitle').focus();
     }
 
     function closeModal() {
       document.getElementById('overlay').classList.remove('open');
-      editingTaskId = null;
+      editingTaskId  = null;
+      editingGroupId = null;
       ['fTitle','fDesc','fTime'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('fCategory').value = '';
       document.getElementById('fPriority').value = 'orta';
+      document.getElementById('editAllRow').style.display    = 'none';
+      document.getElementById('editAllRepeatsCheck').checked = false;
     }
 
     function handleOverlayClick(e) {
@@ -2154,10 +2171,14 @@
       };
 
       if (editingTaskId !== null) {
+        const applyAll = editingGroupId && document.getElementById('editAllRepeatsCheck').checked;
         await fetch(`/daily/edit/${editingTaskId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            ...payload,
+            ...(applyAll ? { apply_to_group: true, group_id: editingGroupId } : {}),
+          }),
         });
         closeModal();
         await loadTasks();
@@ -2200,18 +2221,25 @@
 
     // ── Calendar popup ────────────────────────────────────
     let calendarOpen = false;
-    let calYear  = currentDate.getFullYear();
-    let calMonth = currentDate.getMonth();
+    let calYear      = currentDate.getFullYear();
+    let calMonth     = currentDate.getMonth();
+    let calendarDots = {}; // { "2026-04-15": ["#color1", ...] }
+
+    async function loadCalendarDots(year, month) {
+      const res = await fetch(`/daily/month-dots?year=${year}&month=${month}`);
+      calendarDots = await res.json();
+    }
 
     const CAL_MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
                         'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 
-    function toggleCalendar() {
+    async function toggleCalendar() {
       if (calendarOpen) {
         closeCalendar();
       } else {
         calYear  = currentDate.getFullYear();
         calMonth = currentDate.getMonth();
+        await loadCalendarDots(calYear, calMonth + 1);
         renderCalendarGrid();
         document.getElementById('calendarPopup').classList.add('open');
         calendarOpen = true;
@@ -2223,15 +2251,17 @@
       document.getElementById('calendarPopup').classList.remove('open');
     }
 
-    function calPrevMonth() {
+    async function calPrevMonth() {
       calMonth--;
       if (calMonth < 0) { calMonth = 11; calYear--; }
+      await loadCalendarDots(calYear, calMonth + 1);
       renderCalendarGrid();
     }
 
-    function calNextMonth() {
+    async function calNextMonth() {
       calMonth++;
       if (calMonth > 11) { calMonth = 0; calYear++; }
+      await loadCalendarDots(calYear, calMonth + 1);
       renderCalendarGrid();
     }
 
@@ -2285,7 +2315,13 @@
           iso === todayIso ? 'today' : '',
           iso === selectedIso ? 'selected' : '',
         ].filter(Boolean).join(' ');
-        div.textContent = day;
+
+        const colors = !other && calendarDots[iso] ? calendarDots[iso].slice(0, 4) : [];
+        const dotsHtml = colors.length
+          ? `<div class="d-cal-dots">${colors.map(c => `<span class="d-cal-dot" style="background:${c}"></span>`).join('')}</div>`
+          : '<div class="d-cal-dots"></div>';
+
+        div.innerHTML = `<span>${day}</span>${dotsHtml}`;
         div.onclick = () => selectCalDay(iso);
         grid.appendChild(div);
       });

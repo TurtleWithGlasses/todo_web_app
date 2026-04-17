@@ -141,6 +141,14 @@ def update_daily_task(task_id: int, **fields):
                 setattr(task, key, value)
             db.commit()
 
+def update_repeat_group(group_id: int, **fields):
+    with SessionLocal() as db:
+        tasks = db.query(DailyTask).filter(DailyTask.repeat_group_id == group_id).all()
+        for task in tasks:
+            for key, value in fields.items():
+                setattr(task, key, value)
+        db.commit()
+
 def delete_daily_task(task_id: int):
     with SessionLocal() as db:
         task = db.get(DailyTask, task_id)
@@ -210,6 +218,27 @@ def delete_repeat_group(group_id: int):
     with SessionLocal() as db:
         db.query(DailyTask).filter(DailyTask.repeat_group_id == group_id).delete()
         db.commit()
+
+def get_month_dots(year: int, month: int):
+    import calendar as cal_mod
+    last_day  = cal_mod.monthrange(year, month)[1]
+    from_date = f"{year}-{str(month).zfill(2)}-01"
+    to_date   = f"{year}-{str(month).zfill(2)}-{str(last_day).zfill(2)}"
+    with SessionLocal() as db:
+        tasks = db.query(DailyTask).filter(
+            DailyTask.date >= from_date,
+            DailyTask.date <= to_date
+        ).all()
+        cat_colors = {c.name: c.color for c in db.query(Category).all()}
+    from collections import defaultdict
+    dots  = defaultdict(list)
+    seen  = defaultdict(set)
+    for t in tasks:
+        color = cat_colors.get(t.category, '#64748b') if t.category else '#64748b'
+        if color not in seen[t.date]:
+            dots[t.date].append(color)
+            seen[t.date].add(color)
+    return dict(dots)
 
 def set_daily_task_status(task_id: int, status: str):
     with SessionLocal() as db:
