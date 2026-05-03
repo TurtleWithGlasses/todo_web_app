@@ -19,21 +19,19 @@ main = Blueprint("main", __name__)
 engine = create_engine("sqlite:///todo.db", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
 Base.metadata.create_all(engine)
-with engine.connect() as _conn:
-    for _stmt in [
-        "ALTER TABLE daily_tasks ADD COLUMN repeat_group_id INTEGER",
-        "ALTER TABLE tasks ADD COLUMN month VARCHAR",
-    ]:
-        try:
+for _stmt in [
+    "ALTER TABLE daily_tasks ADD COLUMN repeat_group_id INTEGER",
+    "ALTER TABLE tasks ADD COLUMN month VARCHAR",
+]:
+    try:
+        with engine.begin() as _conn:
             _conn.execute(text(_stmt))
-            _conn.commit()
-        except Exception:
-            pass
-    # Migrate existing tasks (uploaded before monthly feature) to current month
-    from datetime import date as _date
-    _cur_month = _date.today().strftime("%Y-%m")
+    except Exception:
+        pass
+from datetime import date as _date
+_cur_month = _date.today().strftime("%Y-%m")
+with engine.begin() as _conn:
     _conn.execute(text(f"UPDATE tasks SET month = '{_cur_month}' WHERE month IS NULL OR month = ''"))
-    _conn.commit()
 seed_categories()
 
 @main.route("/")
