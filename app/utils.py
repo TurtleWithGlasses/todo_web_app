@@ -13,15 +13,42 @@ def get_db():
     finally:
         db.close()
 
-def load_tasks():
+def get_current_month():
+    from datetime import date
+    return date.today().strftime("%Y-%m")
+
+def load_tasks(month: str):
     with SessionLocal() as db:
-        return db.query(Task).order_by(Task.position).all()
-    
-def add_task(text):
+        return db.query(Task).filter(Task.month == month).order_by(Task.position).all()
+
+def initialize_month(month: str):
+    """If no tasks exist for this month, copy from the most recent previous month with reset statuses."""
     with SessionLocal() as db:
-        last_position = db.query(Task).order_by(Task.position.desc()).first()
-        position = last_position.position + 1 if last_position else 0
-        task = Task(text=text, position=position)
+        if db.query(Task).filter(Task.month == month).count() > 0:
+            return
+        prev = (
+            db.query(Task.month)
+            .filter(Task.month < month, Task.month != "")
+            .order_by(Task.month.desc())
+            .first()
+        )
+        if not prev:
+            return
+        prev_tasks = db.query(Task).filter(Task.month == prev[0]).order_by(Task.position).all()
+        for t in prev_tasks:
+            db.add(Task(text=t.text, data_status="☐", work_status="☐", position=t.position, month=month))
+        db.commit()
+
+def get_available_months():
+    with SessionLocal() as db:
+        rows = db.query(Task.month).distinct().order_by(Task.month.desc()).all()
+        return [r[0] for r in rows if r[0]]
+
+def add_task(text, month: str):
+    with SessionLocal() as db:
+        last = db.query(Task).filter(Task.month == month).order_by(Task.position.desc()).first()
+        position = last.position + 1 if last else 0
+        task = Task(text=text, position=position, month=month)
         db.add(task)
         db.commit()
         db.refresh(task)
@@ -52,9 +79,9 @@ def toggle_task_status(task_id, column):
                 task.work_status = "☐" if task.work_status == "☑" else "☑"
             db.commit()
 
-def reset_all_tasks():
+def reset_all_tasks(month: str):
     with SessionLocal() as db:
-        tasks = db.query(Task).all()
+        tasks = db.query(Task).filter(Task.month == month).all()
         for task in tasks:
             task.data_status = "☐"
             task.work_status = "☐"

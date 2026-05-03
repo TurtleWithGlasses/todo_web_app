@@ -6,6 +6,48 @@
   <title>TaskFlow — Work Organizer</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✓</text></svg>">
   <link rel="stylesheet" href="/static/styles.css">
+  <style>
+    .month-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin: 18px 0 8px;
+    }
+    .month-nav-btn {
+      background: var(--surface-2, #1e2130);
+      border: 1px solid var(--border, #2e3347);
+      color: var(--text, #e2e8f0);
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .month-nav-btn:hover:not(:disabled) { background: var(--surface-3, #252a3d); }
+    .month-nav-btn:disabled { opacity: 0.3; cursor: default; }
+    .month-label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text, #e2e8f0);
+      min-width: 160px;
+      text-align: center;
+    }
+    .readonly-banner {
+      text-align: center;
+      padding: 8px 16px;
+      background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.3);
+      border-radius: 10px;
+      color: #f59e0b;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -22,12 +64,22 @@
       </nav>
     </header>
 
-    <div class="input-section">
+    <div class="month-nav-bar">
+      <button class="month-nav-btn" id="prevMonthBtn" onclick="prevMonth()">&#8249;</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button class="month-nav-btn" id="nextMonthBtn" onclick="nextMonth()">&#8250;</button>
+    </div>
+
+    <div id="readonlyBanner" class="readonly-banner" style="display:none">
+      Past month — read only
+    </div>
+
+    <div class="input-section" id="inputSection">
       <input type="text" id="taskInput" placeholder="What needs to be done?" onkeypress="handleKeyPress(event)">
       <button class="btn-primary" onclick="addTask()">
         <span>✦</span> Add Task
       </button>
-      <button class="btn-secondary" onclick="resetAll()">Reset All</button>
+      <button class="btn-secondary" id="resetBtn" onclick="resetAll()">Reset All</button>
     </div>
 
     <div class="stats-bar">
@@ -60,75 +112,125 @@
     let draggedItem = null;
     let draggedId = null;
 
+    const TODAY_MONTH = new Date().toISOString().slice(0, 7);
+    let currentMonth = TODAY_MONTH;
+
+    const MONTH_NAMES = [
+      'January','February','March','April','May','June',
+      'July','August','September','October','November','December'
+    ];
+
+    function formatMonthLabel(ym) {
+      const [year, month] = ym.split('-');
+      return `${MONTH_NAMES[parseInt(month) - 1]} ${year}`;
+    }
+
+    function updateMonthUI() {
+      const isCurrentMonth = currentMonth === TODAY_MONTH;
+      document.getElementById('monthLabel').textContent = formatMonthLabel(currentMonth);
+      document.getElementById('nextMonthBtn').disabled = currentMonth >= TODAY_MONTH;
+      document.getElementById('inputSection').style.display = isCurrentMonth ? '' : 'none';
+      document.getElementById('readonlyBanner').style.display = isCurrentMonth ? 'none' : '';
+    }
+
+    async function prevMonth() {
+      const [y, m] = currentMonth.split('-').map(Number);
+      const d = new Date(y, m - 2, 1);
+      currentMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      updateMonthUI();
+      await loadTasks();
+    }
+
+    async function nextMonth() {
+      if (currentMonth >= TODAY_MONTH) return;
+      const [y, m] = currentMonth.split('-').map(Number);
+      const d = new Date(y, m, 1);
+      currentMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      updateMonthUI();
+      await loadTasks();
+    }
+
     function handleKeyPress(e) {
       if (e.key === 'Enter') addTask();
     }
 
     function updateStats(tasks) {
-      const total = tasks.length;
-      const dataComplete = tasks.filter(t => t.data_status === "☑").length;
-      const workComplete = tasks.filter(t => t.work_status === "☑").length;
-      
-      document.getElementById('totalTasks').textContent = total;
-      document.getElementById('dataComplete').textContent = dataComplete;
-      document.getElementById('workComplete').textContent = workComplete;
+      document.getElementById('totalTasks').textContent = tasks.length;
+      document.getElementById('dataComplete').textContent = tasks.filter(t => t.data_status === "☑").length;
+      document.getElementById('workComplete').textContent = tasks.filter(t => t.work_status === "☑").length;
     }
 
     async function loadTasks() {
-      const res = await fetch("/tasks");
+      const res = await fetch(`/tasks?month=${currentMonth}`);
       const tasks = await res.json();
       const list = document.getElementById("taskList");
-      
+      const readonly = currentMonth !== TODAY_MONTH;
+
       updateStats(tasks);
-      
+
       if (tasks.length === 0) {
         list.innerHTML = `
           <li>
             <div class="empty-state">
               <div class="empty-state-icon">📋</div>
-              <div class="empty-state-text">No tasks yet. Add one above!</div>
+              <div class="empty-state-text">${readonly ? 'No tasks recorded for this month.' : 'No tasks yet. Add one above!'}</div>
             </div>
           </li>
         `;
         return;
       }
-      
+
       list.innerHTML = "";
       tasks.forEach((task, index) => {
         const li = document.createElement("li");
-        li.setAttribute("draggable", "true");
         li.setAttribute("data-id", task.id);
         li.className = "task-item";
-        li.innerHTML = `
-          <div class="task-row" style="animation-delay: ${index * 0.05}s">
-            <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-            
-            <input type="text" class="task-text" value="${escapeHtml(task.text)}" onchange="editTask(${task.id}, this.value)">
-            
-            <div class="status-group">
-              <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'data', this)" title="Data Status">
-                ${task.data_status === "☑" ? '✓' : ''}
-              </button>
-            </div>
 
-            <div class="status-group">
-              <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'work', this)" title="Work Status">
-                ${task.work_status === "☑" ? '✓' : ''}
-              </button>
+        if (readonly) {
+          li.innerHTML = `
+            <div class="task-row" style="animation-delay: ${index * 0.05}s">
+              <div class="drag-handle" style="opacity:0.2">⋮⋮</div>
+              <span class="task-text" style="flex:1;padding:0 8px;color:var(--text,#e2e8f0)">${escapeHtml(task.text)}</span>
+              <div class="status-group">
+                <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" disabled style="cursor:default">
+                  ${task.data_status === "☑" ? '✓' : ''}
+                </button>
+              </div>
+              <div class="status-group">
+                <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" disabled style="cursor:default">
+                  ${task.work_status === "☑" ? '✓' : ''}
+                </button>
+              </div>
+              <div style="width:32px"></div>
             </div>
+          `;
+        } else {
+          li.setAttribute("draggable", "true");
+          li.innerHTML = `
+            <div class="task-row" style="animation-delay: ${index * 0.05}s">
+              <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
+              <input type="text" class="task-text" value="${escapeHtml(task.text)}" onchange="editTask(${task.id}, this.value)">
+              <div class="status-group">
+                <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'data', this)" title="Data Status">
+                  ${task.data_status === "☑" ? '✓' : ''}
+                </button>
+              </div>
+              <div class="status-group">
+                <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'work', this)" title="Work Status">
+                  ${task.work_status === "☑" ? '✓' : ''}
+                </button>
+              </div>
+              <button class="delete-btn" onclick="deleteTask(${task.id})" title="Delete Task">✕</button>
+            </div>
+          `;
+          li.addEventListener('dragstart', handleDragStart);
+          li.addEventListener('dragend', handleDragEnd);
+          li.addEventListener('dragover', handleDragOver);
+          li.addEventListener('dragenter', handleDragEnter);
+          li.addEventListener('dragleave', handleDragLeave);
+          li.addEventListener('drop', handleDrop);
+        }
 
-            <button class="delete-btn" onclick="deleteTask(${task.id})" title="Delete Task">✕</button>
-          </div>
-        `;
-        
-        // Drag event listeners
-        li.addEventListener('dragstart', handleDragStart);
-        li.addEventListener('dragend', handleDragEnd);
-        li.addEventListener('dragover', handleDragOver);
-        li.addEventListener('dragenter', handleDragEnter);
-        li.addEventListener('dragleave', handleDragLeave);
-        li.addEventListener('drop', handleDrop);
-        
         list.appendChild(li);
       });
     }
@@ -140,18 +242,12 @@
       this.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', draggedId);
-      
-      // Slight delay to allow the dragging class to apply before ghost image is captured
-      setTimeout(() => {
-        this.style.opacity = '0.4';
-      }, 0);
+      setTimeout(() => { this.style.opacity = '0.4'; }, 0);
     }
 
     function handleDragEnd(e) {
       this.classList.remove('dragging');
       this.style.opacity = '1';
-      
-      // Remove all drag-over classes
       document.querySelectorAll('.task-item').forEach(item => {
         item.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
       });
@@ -160,11 +256,8 @@
     function handleDragOver(e) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      
-      // Determine if we're in the top or bottom half of the element
       const rect = this.getBoundingClientRect();
       const midpoint = rect.top + rect.height / 2;
-      
       this.classList.remove('drag-over-top', 'drag-over-bottom');
       if (e.clientY < midpoint) {
         this.classList.add('drag-over-top');
@@ -175,9 +268,7 @@
 
     function handleDragEnter(e) {
       e.preventDefault();
-      if (this !== draggedItem) {
-        this.classList.add('drag-over');
-      }
+      if (this !== draggedItem) this.classList.add('drag-over');
     }
 
     function handleDragLeave(e) {
@@ -187,38 +278,28 @@
     async function handleDrop(e) {
       e.preventDefault();
       e.stopPropagation();
-      
       if (this === draggedItem) return;
-      
+
       const list = document.getElementById('taskList');
-      const items = [...list.querySelectorAll('.task-item')];
-      const dropTarget = this;
-      
-      // Determine position (before or after drop target)
       const rect = this.getBoundingClientRect();
-      const midpoint = rect.top + rect.height / 2;
-      const insertBefore = e.clientY < midpoint;
-      
-      // Reorder DOM
+      const insertBefore = e.clientY < rect.top + rect.height / 2;
+
       if (insertBefore) {
-        list.insertBefore(draggedItem, dropTarget);
+        list.insertBefore(draggedItem, this);
       } else {
-        list.insertBefore(draggedItem, dropTarget.nextSibling);
+        list.insertBefore(draggedItem, this.nextSibling);
       }
-      
-      // Get new order
-      const newOrder = [...list.querySelectorAll('.task-item')].map(item => 
+
+      const newOrder = [...list.querySelectorAll('.task-item')].map(item =>
         parseInt(item.getAttribute('data-id'))
       );
-      
-      // Send to server
+
       await fetch('/reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order: newOrder })
       });
-      
-      // Clean up classes
+
       this.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
     }
 
@@ -236,7 +317,7 @@
       const res = await fetch("/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task })
+        body: JSON.stringify({ task, month: currentMonth })
       });
       const data = await res.json();
       if (data.success) {
@@ -260,7 +341,6 @@
 
     async function toggleStatus(id, column, button) {
       await fetch(`/toggle/${id}/${column}`, { method: "POST" });
-      
       const isActive = button.classList.contains('active');
       if (isActive) {
         button.classList.remove('active');
@@ -269,21 +349,26 @@
         button.classList.add('active');
         button.textContent = '✓';
       }
-      
-      // Refresh stats
-      const res = await fetch("/tasks");
+      const res = await fetch(`/tasks?month=${currentMonth}`);
       const tasks = await res.json();
       updateStats(tasks);
     }
 
     async function resetAll() {
       if (confirm('Reset all task statuses? This will uncheck all tasks.')) {
-        await fetch("/reset", { method: "POST" });
+        await fetch("/reset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ month: currentMonth })
+        });
         loadTasks();
       }
     }
 
-    window.onload = loadTasks;
+    window.onload = async () => {
+      updateMonthUI();
+      await loadTasks();
+    };
   </script>
 </body>
 </html>

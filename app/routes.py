@@ -5,6 +5,7 @@ from app.models import Base, Task
 from app.utils import (
     load_tasks, add_task, update_task_text, delete_task,
     toggle_task_status, reset_all_tasks,
+    get_current_month, initialize_month, get_available_months,
     load_daily_tasks, add_daily_task, update_daily_task,
     delete_daily_task, set_daily_task_status, get_daily_stats,
     get_weekly_stats, get_analysis, move_daily_task, duplicate_daily_task,
@@ -19,11 +20,20 @@ engine = create_engine("sqlite:///todo.db", connect_args={"check_same_thread": F
 SessionLocal = sessionmaker(bind=engine)
 Base.metadata.create_all(engine)
 with engine.connect() as _conn:
-    try:
-        _conn.execute(text("ALTER TABLE daily_tasks ADD COLUMN repeat_group_id INTEGER"))
-        _conn.commit()
-    except Exception:
-        pass  # column already exists
+    for _stmt in [
+        "ALTER TABLE daily_tasks ADD COLUMN repeat_group_id INTEGER",
+        "ALTER TABLE tasks ADD COLUMN month VARCHAR",
+    ]:
+        try:
+            _conn.execute(text(_stmt))
+            _conn.commit()
+        except Exception:
+            pass
+    # Migrate existing tasks (uploaded before monthly feature) to current month
+    from datetime import date as _date
+    _cur_month = _date.today().strftime("%Y-%m")
+    _conn.execute(text(f"UPDATE tasks SET month = '{_cur_month}' WHERE month IS NULL OR month = ''"))
+    _conn.commit()
 seed_categories()
 
 @main.route("/")
@@ -32,7 +42,10 @@ def index():
 
 @main.route("/tasks", methods=["GET"])
 def get_tasks():
-    tasks = load_tasks()
+    month = request.args.get("month") or get_current_month()
+    if month == get_current_month():
+        initialize_month(month)
+    tasks = load_tasks(month)
     return jsonify([
         {
             "id": task.id,
@@ -44,12 +57,17 @@ def get_tasks():
         for task in tasks
     ])
 
+@main.route("/months", methods=["GET"])
+def months():
+    return jsonify(get_available_months())
+
 @main.route("/add", methods=["POST"])
 def add():
     data = request.get_json()
     task_text = data.get("task")
+    month = data.get("month") or get_current_month()
     if task_text:
-        task = add_task(task_text)
+        task = add_task(task_text, month)
         return jsonify({
             "success": True,
             "id": task.id,
@@ -77,27 +95,29 @@ def toggle(id, column):
 
 @main.route("/reset", methods=["POST"])
 def reset():
-    reset_all_tasks()
+    data = request.get_json() or {}
+    month = data.get("month") or get_current_month()
+    reset_all_tasks(month)
     return jsonify({"success": True})
 
 @main.route("/move", methods=["POST"])
 def move():
     data = request.get_json()
-    print("Move request received:", data)
     task_id = data["id"]
     direction = data["direction"]
 
     with SessionLocal() as db:
-        tasks = db.query(Task).order_by(Task.position).all()
+        task = db.get(Task, task_id)
+        if not task:
+            return jsonify({"success": False}), 404
+        tasks = db.query(Task).filter(Task.month == task.month).order_by(Task.position).all()
         task_ids = [t.id for t in tasks]
         index = task_ids.index(task_id)
-
-        swap_index = index -1 if direction == "up" else index + 1
-
+        swap_index = index - 1 if direction == "up" else index + 1
         if 0 <= swap_index < len(tasks):
             tasks[index].position, tasks[swap_index].position = tasks[swap_index].position, tasks[index].position
             db.commit()
-    
+
     return jsonify({"success": True})
 
 @main.route("/reorder", methods=["POST"])

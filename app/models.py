@@ -10,6 +10,7 @@ class Task(Base):
     text = Column(String, nullable=False)
     data_status = Column(String, default="☐")
     work_status = Column(String, default="☐")
+    month = Column(String, nullable=False, default="")  # e.g. "2026-05"
 
 
 class Category(Base):
