@@ -41,7 +41,7 @@ def index():
 @main.route("/tasks", methods=["GET"])
 def get_tasks():
     month = request.args.get("month") or get_current_month()
-    if month == get_current_month():
+    if month >= get_current_month():
         initialize_month(month)
     tasks = load_tasks(month)
     return jsonify([
