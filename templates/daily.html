@@ -3025,7 +3025,7 @@
         const [h, m] = task.time.split(':').map(Number);
         const taskSec = h * 3600 + m * 60;
         const diffMin = (taskSec - nowSec) / 60;
-        if (diffMin > 0 && diffMin <= 15) {
+        if (diffMin > 0 && diffMin <= 30) {
           count++;
           if (!notifiedTaskIds.has(task.id)) {
             notifiedTaskIds.add(task.id);
@@ -3052,8 +3052,8 @@
       if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
       }
-      // Check every 30 seconds
-      setInterval(checkDueTimes, 30000);
+      // Check every 60 seconds (browsers throttle background tabs anyway)
+      setInterval(checkDueTimes, 60000);
     }
     init();
   </script>
