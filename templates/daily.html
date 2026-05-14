@@ -1801,6 +1801,7 @@
       renderTasks();
       updateRing();
       buildTrend();
+      checkDueTimes();
     }
 
     function renderTasks() {
@@ -2419,7 +2420,7 @@
       // Tab title update
       document.title = timerRunning
         ? `${display} — ${timerMode === 'odak' ? 'Odak' : 'Mola'}`
-        : 'Günlük İş Takibi';
+        : getAlertTitle();
 
       // SVG ring: full at start, depletes to 0
       const pct = timerSecs / timerTotal;
@@ -2956,6 +2957,88 @@
       });
     }
 
+    // ── Due-time notifications ────────────────────────────
+    let notifiedTaskIds    = new Set();
+    let upcomingAlertCount = 0;
+
+    function getAlertTitle() {
+      return upcomingAlertCount > 0
+        ? `(${upcomingAlertCount}) Günlük İş Takibi`
+        : 'Günlük İş Takibi';
+    }
+
+    function updateFaviconBadge(count) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 32; canvas.height = 32;
+      const ctx = canvas.getContext('2d');
+      ctx.font = '26px serif';
+      ctx.textBaseline = 'top';
+      ctx.fillText('📅', 0, 1);
+      if (count > 0) {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(25, 7, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(count > 9 ? '9+' : String(count), 25, 7);
+      }
+      let link = document.querySelector("link[rel='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = canvas.toDataURL();
+    }
+
+    function sendDueNotification(task, minutesLeft) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const body = minutesLeft <= 1
+        ? `Şimdi başlamanız gerekiyor! (${task.time})`
+        : `${minutesLeft} dakika kaldı — ${task.time}`;
+      const n = new Notification(`⏰ ${task.title}`, { body, tag: `due-${task.id}` });
+      setTimeout(() => n.close(), 12000);
+    }
+
+    function checkDueTimes() {
+      const now      = new Date();
+      const todayIso = isoDate(now);
+      const viewingToday = isoDate(currentDate) === todayIso;
+
+      if (!viewingToday) {
+        if (upcomingAlertCount !== 0) {
+          upcomingAlertCount = 0;
+          updateFaviconBadge(0);
+          if (!timerRunning) document.title = getAlertTitle();
+        }
+        return;
+      }
+
+      const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      let count = 0;
+
+      for (const task of allTasks) {
+        if (!task.time || task.status === 'tamamlandı') continue;
+        const [h, m] = task.time.split(':').map(Number);
+        const taskSec = h * 3600 + m * 60;
+        const diffMin = (taskSec - nowSec) / 60;
+        if (diffMin > 0 && diffMin <= 15) {
+          count++;
+          if (!notifiedTaskIds.has(task.id)) {
+            notifiedTaskIds.add(task.id);
+            sendDueNotification(task, Math.round(diffMin));
+          }
+        }
+      }
+
+      upcomingAlertCount = count;
+      updateFaviconBadge(count);
+      if (!timerRunning) document.title = getAlertTitle();
+    }
+
     async function init() {
       updateDateLabel();
       renderNotifStatus();
@@ -2964,6 +3047,13 @@
       setupTimeInput('repeatTime');
       await loadCategories();
       loadTasks(); // also calls buildTrend() internally
+
+      // Request browser notification permission
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+      // Check every 30 seconds
+      setInterval(checkDueTimes, 30000);
     }
     init();
   </script>
