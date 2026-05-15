@@ -3018,23 +3018,23 @@
       }
 
       const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      let count = 0;
 
-      // Add tasks entering the 30-min window to the alerted set (send OS notification once)
       for (const task of allTasks) {
         if (!task.time || task.status === 'tamamlandı') continue;
         const [h, m] = task.time.split(':').map(Number);
         const taskSec = h * 3600 + m * 60;
         const diffMin = (taskSec - nowSec) / 60;
+
+        // Send OS notification once when task enters the 30-min window
         if (diffMin > 0 && diffMin <= 30 && !notifiedTaskIds.has(task.id)) {
           notifiedTaskIds.add(task.id);
           sendDueNotification(task, Math.round(diffMin));
         }
-      }
 
-      // Badge = alerted tasks that are still not completed (persists past due time)
-      const count = allTasks.filter(
-        t => notifiedTaskIds.has(t.id) && t.status !== 'tamamlandı'
-      ).length;
+        // Count badge: within window, OR already overdue — persists through page refresh
+        if (diffMin <= 30) count++;
+      }
 
       upcomingAlertCount = count;
       updateFaviconBadge(count);
