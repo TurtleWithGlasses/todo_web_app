@@ -232,7 +232,8 @@ def daily_duplicate(id):
     if not date:
         return jsonify({"success": False, "error": "date required"}), 400
     time = data.get("time") or None
-    task = duplicate_daily_task(id, date, new_time=time)
+    title = data.get("title") or None
+    task = duplicate_daily_task(id, date, new_time=time, new_title=title)
     if not task:
         return jsonify({"success": False, "error": "task not found"}), 404
     return jsonify({"success": True, "id": task.id})

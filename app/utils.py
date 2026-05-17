@@ -192,7 +192,7 @@ def move_daily_task(task_id: int, new_date: str, new_time: str = None):
                 task.time = new_time
             db.commit()
 
-def duplicate_daily_task(task_id: int, new_date: str, new_time: str = None):
+def duplicate_daily_task(task_id: int, new_date: str, new_time: str = None, new_title: str = None):
     with SessionLocal() as db:
         task = db.get(DailyTask, task_id)
         if not task:
@@ -200,7 +200,7 @@ def duplicate_daily_task(task_id: int, new_date: str, new_time: str = None):
         last = db.query(DailyTask).filter(DailyTask.date == new_date).order_by(DailyTask.position.desc()).first()
         position = last.position + 1 if last else 0
         new_task = DailyTask(
-            title=task.title,
+            title=new_title if new_title else task.title,
             description=task.description,
             time=new_time if new_time is not None else task.time,
             category=task.category,

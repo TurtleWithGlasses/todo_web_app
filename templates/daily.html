@@ -1690,6 +1690,12 @@
   <div class="d-overlay" id="transferOverlay" onclick="handleTransferOverlayClick(event)">
     <div class="d-modal" style="max-width:380px">
       <h2 id="transferTitle">Görevi Taşı</h2>
+      <div class="d-form-row" id="transferTitleRow" style="display:none">
+        <div class="d-fg" style="flex:1">
+          <label class="d-fl">Görev Adı</label>
+          <input class="d-fi" id="transferTaskTitle" type="text" />
+        </div>
+      </div>
       <div class="d-form-row">
         <div class="d-fg">
           <label class="d-fl">Hedef Tarih</label>
@@ -2128,6 +2134,13 @@
       document.getElementById('transferDate').value = isoDate(currentDate);
       const task = allTasks.find(t => t.id === id);
       document.getElementById('transferTime').value = task ? (task.time || '') : '';
+      const titleRow = document.getElementById('transferTitleRow');
+      if (mode === 'copy') {
+        document.getElementById('transferTaskTitle').value = task ? task.title : '';
+        titleRow.style.display = '';
+      } else {
+        titleRow.style.display = 'none';
+      }
       document.getElementById('transferOverlay').classList.add('open');
     }
 
@@ -2148,10 +2161,15 @@
       const endpoint = transferMode === 'move'
         ? `/daily/tasks/${transferTaskId}/move`
         : `/daily/tasks/${transferTaskId}/duplicate`;
+      const body = { date, time };
+      if (transferMode === 'copy') {
+        const t = document.getElementById('transferTaskTitle').value.trim();
+        if (t) body.title = t;
+      }
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, time }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         closeTransferModal();
