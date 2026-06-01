@@ -37,16 +37,6 @@
       min-width: 160px;
       text-align: center;
     }
-    .readonly-banner {
-      text-align: center;
-      padding: 8px 16px;
-      background: rgba(245,158,11,0.12);
-      border: 1px solid rgba(245,158,11,0.3);
-      border-radius: 10px;
-      color: #f59e0b;
-      font-size: 0.85rem;
-      margin-bottom: 12px;
-    }
   </style>
 </head>
 <body>
@@ -68,10 +58,6 @@
       <button class="month-nav-btn" id="prevMonthBtn" onclick="prevMonth()">&#8249;</button>
       <span class="month-label" id="monthLabel"></span>
       <button class="month-nav-btn" id="nextMonthBtn" onclick="nextMonth()">&#8250;</button>
-    </div>
-
-    <div id="readonlyBanner" class="readonly-banner" style="display:none">
-      Past month — read only
     </div>
 
     <div class="input-section" id="inputSection">
@@ -126,11 +112,8 @@
     }
 
     function updateMonthUI() {
-      const isCurrentMonth = currentMonth === TODAY_MONTH;
       document.getElementById('monthLabel').textContent = formatMonthLabel(currentMonth);
       document.getElementById('nextMonthBtn').disabled = currentMonth >= TODAY_MONTH;
-      document.getElementById('inputSection').style.display = isCurrentMonth ? '' : 'none';
-      document.getElementById('readonlyBanner').style.display = isCurrentMonth ? 'none' : '';
     }
 
     async function prevMonth() {
@@ -164,7 +147,6 @@
       const res = await fetch(`/tasks?month=${currentMonth}`);
       const tasks = await res.json();
       const list = document.getElementById("taskList");
-      const readonly = currentMonth !== TODAY_MONTH;
 
       updateStats(tasks);
 
@@ -173,7 +155,7 @@
           <li>
             <div class="empty-state">
               <div class="empty-state-icon">📋</div>
-              <div class="empty-state-text">${readonly ? 'No tasks recorded for this month.' : 'No tasks yet. Add one above!'}</div>
+              <div class="empty-state-text">No tasks yet. Add one above!</div>
             </div>
           </li>
         `;
@@ -184,53 +166,31 @@
       tasks.forEach((task, index) => {
         const li = document.createElement("li");
         li.setAttribute("data-id", task.id);
+        li.setAttribute("draggable", "true");
         li.className = "task-item";
-
-        if (readonly) {
-          li.innerHTML = `
-            <div class="task-row" style="animation-delay: ${index * 0.05}s">
-              <div class="drag-handle" style="opacity:0.2">⋮⋮</div>
-              <span class="task-text" style="flex:1;padding:0 8px;color:var(--text,#e2e8f0)">${escapeHtml(task.text)}</span>
-              <div class="status-group">
-                <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" disabled style="cursor:default">
-                  ${task.data_status === "☑" ? '✓' : ''}
-                </button>
-              </div>
-              <div class="status-group">
-                <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" disabled style="cursor:default">
-                  ${task.work_status === "☑" ? '✓' : ''}
-                </button>
-              </div>
-              <div style="width:32px"></div>
+        li.innerHTML = `
+          <div class="task-row" style="animation-delay: ${index * 0.05}s">
+            <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
+            <input type="text" class="task-text" value="${escapeHtml(task.text)}" onchange="editTask(${task.id}, this.value)">
+            <div class="status-group">
+              <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'data', this)" title="Data Status">
+                ${task.data_status === "☑" ? '✓' : ''}
+              </button>
             </div>
-          `;
-        } else {
-          li.setAttribute("draggable", "true");
-          li.innerHTML = `
-            <div class="task-row" style="animation-delay: ${index * 0.05}s">
-              <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-              <input type="text" class="task-text" value="${escapeHtml(task.text)}" onchange="editTask(${task.id}, this.value)">
-              <div class="status-group">
-                <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'data', this)" title="Data Status">
-                  ${task.data_status === "☑" ? '✓' : ''}
-                </button>
-              </div>
-              <div class="status-group">
-                <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'work', this)" title="Work Status">
-                  ${task.work_status === "☑" ? '✓' : ''}
-                </button>
-              </div>
-              <button class="delete-btn" onclick="deleteTask(${task.id})" title="Delete Task">✕</button>
+            <div class="status-group">
+              <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'work', this)" title="Work Status">
+                ${task.work_status === "☑" ? '✓' : ''}
+              </button>
             </div>
-          `;
-          li.addEventListener('dragstart', handleDragStart);
-          li.addEventListener('dragend', handleDragEnd);
-          li.addEventListener('dragover', handleDragOver);
-          li.addEventListener('dragenter', handleDragEnter);
-          li.addEventListener('dragleave', handleDragLeave);
-          li.addEventListener('drop', handleDrop);
-        }
-
+            <button class="delete-btn" onclick="deleteTask(${task.id})" title="Delete Task">✕</button>
+          </div>
+        `;
+        li.addEventListener('dragstart', handleDragStart);
+        li.addEventListener('dragend', handleDragEnd);
+        li.addEventListener('dragover', handleDragOver);
+        li.addEventListener('dragenter', handleDragEnter);
+        li.addEventListener('dragleave', handleDragLeave);
+        li.addEventListener('drop', handleDrop);
         list.appendChild(li);
       });
     }
