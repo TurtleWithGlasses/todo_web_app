@@ -1464,7 +1464,7 @@
   </div>
 
   <!-- ADD TASK MODAL -->
-  <div class="d-overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="d-overlay" id="overlay">
     <div class="d-modal">
       <h2 id="modalTitle">Yeni Görev Ekle</h2>
 
@@ -2121,9 +2121,6 @@
       document.getElementById('editAllRepeatsCheck').checked = false;
     }
 
-    function handleOverlayClick(e) {
-      if (e.target === document.getElementById('overlay')) closeModal();
-    }
 
     // ── Move / Copy task ──────────────────────────────────
     function openTransferModal(id, mode) {
