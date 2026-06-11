@@ -1480,9 +1480,16 @@
 
       <div class="d-form-row">
         <div class="d-fg">
+          <label class="d-fl">Tarih</label>
+          <input class="d-fi" id="fDate" type="date" />
+        </div>
+        <div class="d-fg">
           <label class="d-fl">Saat</label>
           <input class="d-fi" id="fTime" type="text" placeholder="15:00" maxlength="5" />
         </div>
+      </div>
+
+      <div class="d-form-row">
         <div class="d-fg">
           <label class="d-fl">Kategori</label>
           <select class="d-fs" id="fCategory">
@@ -1490,15 +1497,14 @@
             <!-- filled dynamically -->
           </select>
         </div>
-      </div>
-
-      <div class="d-fg">
-        <label class="d-fl">Öncelik</label>
-        <select class="d-fs" id="fPriority">
-          <option value="orta">Orta</option>
-          <option value="acil">Acil</option>
-          <option value="düşük">Düşük</option>
-        </select>
+        <div class="d-fg">
+          <label class="d-fl">Öncelik</label>
+          <select class="d-fs" id="fPriority">
+            <option value="orta">Orta</option>
+            <option value="acil">Acil</option>
+            <option value="düşük">Düşük</option>
+          </select>
+        </div>
       </div>
 
       <div class="d-edit-all-row" id="editAllRow" style="display:none">
@@ -2087,6 +2093,7 @@
       document.getElementById('modalSubmitBtn').textContent = 'Ekle';
       document.getElementById('newRepeatRow').style.display = '';
       document.getElementById('newTaskRepeatCheck').checked = false;
+      document.getElementById('fDate').value = isoDate(currentDate);
       document.getElementById('overlay').classList.add('open');
       document.getElementById('fTitle').focus();
     }
@@ -2100,6 +2107,7 @@
       editingGroupId = task.repeat_group_id || null;
       document.getElementById('fTitle').value    = task.title;
       document.getElementById('fDesc').value     = task.description || '';
+      document.getElementById('fDate').value     = task.date || isoDate(currentDate);
       document.getElementById('fTime').value     = task.time || '';
       document.getElementById('fCategory').value = task.category || '';
       document.getElementById('fPriority').value = task.priority || 'orta';
@@ -2114,7 +2122,7 @@
       document.getElementById('overlay').classList.remove('open');
       editingTaskId  = null;
       editingGroupId = null;
-      ['fTitle','fDesc','fTime'].forEach(id => document.getElementById(id).value = '');
+      ['fTitle','fDesc','fDate','fTime'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('fCategory').value = '';
       document.getElementById('fPriority').value = 'orta';
       document.getElementById('editAllRow').style.display    = 'none';
@@ -2203,7 +2211,7 @@
         const res  = await fetch('/daily/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, date: isoDate(currentDate) }),
+          body: JSON.stringify({ ...payload, date: document.getElementById('fDate').value || isoDate(currentDate) }),
         });
         const data = await res.json();
         closeModal();
