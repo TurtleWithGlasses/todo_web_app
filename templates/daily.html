@@ -1276,6 +1276,62 @@
       font-size: .9rem;
     }
 
+    /* ── Analysis task table ── */
+    .d-analysis-table-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .d-analysis-table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+    .d-analysis-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+    }
+    .d-analysis-table th {
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+      text-align: left;
+      padding: 8px 10px;
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .d-analysis-table th:hover { color: var(--da); }
+    .d-analysis-table th .sort-arrow { margin-left: 4px; color: var(--da); }
+    .d-analysis-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+    .d-analysis-table td.t-title { color: var(--text-primary); font-weight: 500; }
+    .d-analysis-table td.t-desc  { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .d-analysis-table tr:last-child td { border-bottom: none; }
+    .d-at-badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .d-at-badge.st-done    { background: rgba(16,185,129,.15); color: #10b981; }
+    .d-at-badge.st-doing   { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .d-at-badge.st-todo    { background: rgba(100,116,139,.18); color: #94a3b8; }
+    .d-at-badge.pr-acil    { background: rgba(239,68,68,.15);  color: #ef4444; }
+    .d-at-badge.pr-orta    { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .d-at-badge.pr-dusuk   { background: rgba(100,116,139,.18); color: #94a3b8; }
+
     /* Responsive */
     @media (max-width: 960px) {
       .d-layout { grid-template-columns: 1fr; overflow: visible; }
@@ -1587,6 +1643,27 @@
         <div class="d-analysis-chart-box">
           <div class="d-analysis-chart-title">Kategoriye Göre Dağılım</div>
           <canvas id="chartDoughnut" height="180"></canvas>
+        </div>
+      </div>
+
+      <!-- Task list table -->
+      <div class="d-analysis-table-box" id="analysisTableBox" style="display:none">
+        <div class="d-analysis-chart-title">Görev Listesi</div>
+        <div class="d-analysis-table-wrap">
+          <table class="d-analysis-table">
+            <thead>
+              <tr>
+                <th onclick="sortAnalysisTable('date')" data-key="date">Tarih</th>
+                <th onclick="sortAnalysisTable('title')" data-key="title">Başlık</th>
+                <th onclick="sortAnalysisTable('description')" data-key="description">Açıklama</th>
+                <th onclick="sortAnalysisTable('time')" data-key="time">Saat</th>
+                <th onclick="sortAnalysisTable('category')" data-key="category">Kategori</th>
+                <th onclick="sortAnalysisTable('priority')" data-key="priority">Öncelik</th>
+                <th onclick="sortAnalysisTable('status')" data-key="status">Durum</th>
+              </tr>
+            </thead>
+            <tbody id="analysisTableBody"></tbody>
+          </table>
         </div>
       </div>
 
@@ -2585,6 +2662,81 @@
       runAnalysis();
     }
 
+    // ── Analysis task table ───────────────────────────────
+    let analysisTasks = [];
+    let analysisSort  = { key: 'date', dir: 1 };
+    try {
+      const saved = JSON.parse(localStorage.getItem('analysisTableSort'));
+      if (saved && saved.key) analysisSort = saved;
+    } catch (e) { /* ignore corrupt state */ }
+
+    const PRIORITY_RANK = { 'acil': 0, 'orta': 1, 'düşük': 2 };
+    const STATUS_RANK   = { 'yapılacak': 0, 'yapılıyor': 1, 'tamamlandı': 2 };
+
+    function sortAnalysisTable(key) {
+      if (analysisSort.key === key) {
+        analysisSort.dir = -analysisSort.dir;
+      } else {
+        analysisSort = { key, dir: 1 };
+      }
+      localStorage.setItem('analysisTableSort', JSON.stringify(analysisSort));
+      renderAnalysisTable();
+    }
+
+    function renderAnalysisTable() {
+      const { key, dir } = analysisSort;
+      const rows = [...analysisTasks].sort((a, b) => {
+        let va, vb;
+        if (key === 'priority') {
+          va = PRIORITY_RANK[a.priority] ?? 9; vb = PRIORITY_RANK[b.priority] ?? 9;
+        } else if (key === 'status') {
+          va = STATUS_RANK[a.status] ?? 9; vb = STATUS_RANK[b.status] ?? 9;
+        } else {
+          va = (a[key] || '').toString().toLocaleLowerCase('tr-TR');
+          vb = (b[key] || '').toString().toLocaleLowerCase('tr-TR');
+        }
+        if (va < vb) return -dir;
+        if (va > vb) return dir;
+        // Stable tie-break: date then time
+        return (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99'));
+      });
+
+      // Header arrows
+      document.querySelectorAll('.d-analysis-table th').forEach(th => {
+        const arrow = th.querySelector('.sort-arrow');
+        if (arrow) arrow.remove();
+        if (th.dataset.key === key) {
+          const span = document.createElement('span');
+          span.className = 'sort-arrow';
+          span.textContent = dir === 1 ? '▲' : '▼';
+          th.appendChild(span);
+        }
+      });
+
+      const statusBadge = s =>
+        s === 'tamamlandı' ? `<span class="d-at-badge st-done">Tamamlandı</span>` :
+        s === 'yapılıyor'  ? `<span class="d-at-badge st-doing">Yapılıyor</span>`  :
+                             `<span class="d-at-badge st-todo">Yapılacak</span>`;
+      const prBadge = p =>
+        p === 'acil'  ? `<span class="d-at-badge pr-acil">Acil</span>`  :
+        p === 'düşük' ? `<span class="d-at-badge pr-dusuk">Düşük</span>` :
+                        `<span class="d-at-badge pr-orta">Orta</span>`;
+      const fmtDate = d =>
+        new Date(d + 'T00:00:00').toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric' });
+
+      document.getElementById('analysisTableBody').innerHTML = rows.map(t => `
+        <tr>
+          <td>${fmtDate(t.date)}</td>
+          <td class="t-title">${escHtml(t.title)}</td>
+          <td class="t-desc" title="${escHtml(t.description)}">${escHtml(t.description) || '—'}</td>
+          <td>${t.time || '—'}</td>
+          <td>${escHtml(t.category) || '—'}</td>
+          <td>${prBadge(t.priority)}</td>
+          <td>${statusBadge(t.status)}</td>
+        </tr>
+      `).join('');
+    }
+
     async function runAnalysis() {
       const from = document.getElementById('aFrom').value;
       const to   = document.getElementById('aTo').value;
@@ -2600,10 +2752,12 @@
       const summaryEl = document.getElementById('analysisSummary');
       const chartsEl  = document.getElementById('analysisCharts');
       const emptyEl   = document.getElementById('analysisEmpty');
+      const tableEl   = document.getElementById('analysisTableBox');
 
       if (totalTasks === 0) {
         summaryEl.style.display = 'none';
         chartsEl.style.display  = 'none';
+        tableEl.style.display   = 'none';
         emptyEl.style.display   = 'block';
         destroyCharts();
         return;
@@ -2612,6 +2766,10 @@
       emptyEl.style.display   = 'none';
       summaryEl.style.display = 'flex';
       chartsEl.style.display  = 'grid';
+      tableEl.style.display   = '';
+
+      analysisTasks = data.tasks || [];
+      renderAnalysisTable();
 
       // Summary stats
       const rate    = Math.round((totalDone / totalTasks) * 100);

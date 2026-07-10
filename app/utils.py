@@ -326,7 +326,21 @@ def get_analysis(from_date: str, to_date: str):
         for name in sorted(cat_total)
     ]
 
-    return {'daily': daily, 'categories': categories}
+    task_list = [
+        {
+            'id': t.id,
+            'date': t.date,
+            'title': t.title,
+            'description': t.description or '',
+            'time': t.time or '',
+            'category': t.category or '',
+            'priority': t.priority,
+            'status': t.status,
+        }
+        for t in sorted(tasks, key=lambda t: (t.date, t.time or '99:99'))
+    ]
+
+    return {'daily': daily, 'categories': categories, 'tasks': task_list}
 
 
 def get_weekly_stats(reference_date: str):
