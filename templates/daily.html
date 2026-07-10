@@ -1332,6 +1332,37 @@
     .d-at-badge.pr-orta    { background: rgba(245,158,11,.15); color: #f59e0b; }
     .d-at-badge.pr-dusuk   { background: rgba(100,116,139,.18); color: #94a3b8; }
 
+    /* ── Export buttons ── */
+    .d-at-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .d-at-head .d-analysis-chart-title { margin-bottom: 0; }
+    .d-at-export-btns { display: flex; gap: 8px; }
+    .d-at-export {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: .78rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+      transition: background .15s, transform .1s;
+    }
+    .d-at-export:active { transform: scale(.96); }
+    .d-at-export:disabled { opacity: .5; cursor: wait; }
+    .d-at-export.excel { color: #10b981; border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.08); }
+    .d-at-export.excel:hover:not(:disabled) { background: rgba(16,185,129,.2); }
+    .d-at-export.word  { color: #3b82f6; border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.08); }
+    .d-at-export.word:hover:not(:disabled)  { background: rgba(59,130,246,.2); }
+    .d-at-export.pdf   { color: #ef4444; border-color: rgba(239,68,68,.35);  background: rgba(239,68,68,.08); }
+    .d-at-export.pdf:hover:not(:disabled)   { background: rgba(239,68,68,.2); }
+
     /* Responsive */
     @media (max-width: 960px) {
       .d-layout { grid-template-columns: 1fr; overflow: visible; }
@@ -1648,7 +1679,14 @@
 
       <!-- Task list table -->
       <div class="d-analysis-table-box" id="analysisTableBox" style="display:none">
-        <div class="d-analysis-chart-title">Görev Listesi</div>
+        <div class="d-at-head">
+          <div class="d-analysis-chart-title">Görev Listesi</div>
+          <div class="d-at-export-btns">
+            <button class="d-at-export excel" onclick="exportAnalysis('excel', this)">&#128202; Excel</button>
+            <button class="d-at-export word"  onclick="exportAnalysis('word', this)">&#128196; Word</button>
+            <button class="d-at-export pdf"   onclick="exportAnalysis('pdf', this)">&#128213; PDF</button>
+          </div>
+        </div>
         <div class="d-analysis-table-wrap">
           <table class="d-analysis-table">
             <thead>
@@ -2683,9 +2721,18 @@
       renderAnalysisTable();
     }
 
-    function renderAnalysisTable() {
+    const STATUS_TEXT  = { 'tamamlandı': 'Tamamlandı', 'yapılıyor': 'Yapılıyor', 'yapılacak': 'Yapılacak' };
+    const PR_TEXT      = { 'acil': 'Acil', 'orta': 'Orta', 'düşük': 'Düşük' };
+    const STATUS_COLOR = { 'tamamlandı': '#059669', 'yapılıyor': '#b45309', 'yapılacak': '#475569' };
+    const PR_COLOR     = { 'acil': '#dc2626', 'orta': '#b45309', 'düşük': '#475569' };
+
+    function fmtAnalysisDate(d) {
+      return new Date(d + 'T00:00:00').toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric' });
+    }
+
+    function getSortedAnalysisRows() {
       const { key, dir } = analysisSort;
-      const rows = [...analysisTasks].sort((a, b) => {
+      return [...analysisTasks].sort((a, b) => {
         let va, vb;
         if (key === 'priority') {
           va = PRIORITY_RANK[a.priority] ?? 9; vb = PRIORITY_RANK[b.priority] ?? 9;
@@ -2700,6 +2747,11 @@
         // Stable tie-break: date then time
         return (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99'));
       });
+    }
+
+    function renderAnalysisTable() {
+      const { key, dir } = analysisSort;
+      const rows = getSortedAnalysisRows();
 
       // Header arrows
       document.querySelectorAll('.d-analysis-table th').forEach(th => {
@@ -2721,12 +2773,10 @@
         p === 'acil'  ? `<span class="d-at-badge pr-acil">Acil</span>`  :
         p === 'düşük' ? `<span class="d-at-badge pr-dusuk">Düşük</span>` :
                         `<span class="d-at-badge pr-orta">Orta</span>`;
-      const fmtDate = d =>
-        new Date(d + 'T00:00:00').toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric' });
 
       document.getElementById('analysisTableBody').innerHTML = rows.map(t => `
         <tr>
-          <td>${fmtDate(t.date)}</td>
+          <td>${fmtAnalysisDate(t.date)}</td>
           <td class="t-title">${escHtml(t.title)}</td>
           <td class="t-desc" title="${escHtml(t.description)}">${escHtml(t.description) || '—'}</td>
           <td>${t.time || '—'}</td>
@@ -2735,6 +2785,146 @@
           <td>${statusBadge(t.status)}</td>
         </tr>
       `).join('');
+    }
+
+    // ── Export (Excel / Word / PDF) ───────────────────────
+    const EXPORT_HEADERS = ['Tarih', 'Başlık', 'Açıklama', 'Saat', 'Kategori', 'Öncelik', 'Durum'];
+    const _scriptCache = {};
+
+    function loadScript(src) {
+      if (!_scriptCache[src]) {
+        _scriptCache[src] = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = resolve;
+          s.onerror = () => { delete _scriptCache[src]; reject(new Error('Kütüphane yüklenemedi')); };
+          document.head.appendChild(s);
+        });
+      }
+      return _scriptCache[src];
+    }
+
+    function exportFilename() {
+      const from = document.getElementById('aFrom').value;
+      const to   = document.getElementById('aTo').value;
+      return `gorev-listesi_${from}_${to}`;
+    }
+
+    function exportRangeLabel() {
+      const from = document.getElementById('aFrom').value;
+      const to   = document.getElementById('aTo').value;
+      return `${fmtAnalysisDate(from)} – ${fmtAnalysisDate(to)}`;
+    }
+
+    function downloadBlob(blob, filename) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }
+
+    async function exportAnalysis(fmt, btn) {
+      if (!analysisTasks.length) return;
+      btn.disabled = true;
+      try {
+        if (fmt === 'excel')      await exportExcel();
+        else if (fmt === 'word')  exportWord();
+        else if (fmt === 'pdf')   await exportPdf();
+      } catch (err) {
+        alert('Dışa aktarma başarısız: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function exportExcel() {
+      await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+      const rows = getSortedAnalysisRows().map(t => [
+        fmtAnalysisDate(t.date),
+        t.title,
+        t.description || '',
+        t.time || '',
+        t.category || '',
+        PR_TEXT[t.priority] || t.priority,
+        STATUS_TEXT[t.status] || t.status,
+      ]);
+      const ws = XLSX.utils.aoa_to_sheet([EXPORT_HEADERS, ...rows]);
+      ws['!cols'] = [{wch:14},{wch:30},{wch:44},{wch:7},{wch:18},{wch:9},{wch:12}];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Görev Listesi');
+      XLSX.writeFile(wb, exportFilename() + '.xlsx');
+    }
+
+    function exportWord() {
+      const rowsHtml = getSortedAnalysisRows().map((t, i) => `
+        <tr>
+          <td${i % 2 ? ' style="background:#f1f5f9"' : ''}>${escHtml(fmtAnalysisDate(t.date))}</td>
+          <td${i % 2 ? ' style="background:#f1f5f9"' : ''}><b>${escHtml(t.title)}</b></td>
+          <td${i % 2 ? ' style="background:#f1f5f9"' : ''}>${escHtml(t.description) || '—'}</td>
+          <td${i % 2 ? ' style="background:#f1f5f9"' : ''}>${t.time || '—'}</td>
+          <td${i % 2 ? ' style="background:#f1f5f9"' : ''}>${escHtml(t.category) || '—'}</td>
+          <td style="${i % 2 ? 'background:#f1f5f9;' : ''}color:${PR_COLOR[t.priority] || '#b45309'}"><b>${PR_TEXT[t.priority] || t.priority}</b></td>
+          <td style="${i % 2 ? 'background:#f1f5f9;' : ''}color:${STATUS_COLOR[t.status] || '#475569'}"><b>${STATUS_TEXT[t.status] || t.status}</b></td>
+        </tr>`).join('');
+      const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+<head><meta charset="utf-8"><title>Görev Listesi</title>
+<style>
+  body  { font-family: 'Segoe UI', Arial, sans-serif; }
+  h1    { font-size: 16pt; color: #0e7490; margin: 0 0 2pt; }
+  .rng  { color: #64748b; font-size: 9pt; margin: 0 0 12pt; }
+  table { border-collapse: collapse; width: 100%; font-size: 9pt; }
+  th    { background: #164e63; color: #ffffff; padding: 6pt 8pt; text-align: left; border: 1pt solid #164e63; }
+  td    { padding: 5pt 8pt; border: 1pt solid #cbd5e1; vertical-align: top; }
+</style></head>
+<body>
+  <h1>Görev Listesi</h1>
+  <p class="rng">${exportRangeLabel()}</p>
+  <table>
+    <thead><tr>${EXPORT_HEADERS.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+</body></html>`;
+      downloadBlob(new Blob(['﻿', html], { type: 'application/msword' }), exportFilename() + '.doc');
+    }
+
+    async function exportPdf() {
+      await loadScript('https://cdn.jsdelivr.net/npm/pdfmake@0.2.12/build/pdfmake.min.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/pdfmake@0.2.12/build/vfs_fonts.js');
+      const body = [
+        EXPORT_HEADERS.map(h => ({ text: h, bold: true, color: '#ffffff' })),
+        ...getSortedAnalysisRows().map(t => [
+          fmtAnalysisDate(t.date),
+          { text: t.title, bold: true },
+          t.description || '—',
+          t.time || '—',
+          t.category || '—',
+          { text: PR_TEXT[t.priority] || t.priority, color: PR_COLOR[t.priority] || '#b45309', bold: true },
+          { text: STATUS_TEXT[t.status] || t.status, color: STATUS_COLOR[t.status] || '#475569', bold: true },
+        ]),
+      ];
+      pdfMake.createPdf({
+        pageOrientation: 'landscape',
+        pageMargins: [28, 32, 28, 32],
+        content: [
+          { text: 'Görev Listesi', fontSize: 15, bold: true, color: '#0e7490' },
+          { text: exportRangeLabel(), fontSize: 9, color: '#64748b', margin: [0, 2, 0, 10] },
+          {
+            table: { headerRows: 1, widths: [62, 120, '*', 32, 72, 42, 66], body },
+            layout: {
+              fillColor:  ri => ri === 0 ? '#164e63' : (ri % 2 === 0 ? '#f1f5f9' : null),
+              hLineColor: () => '#cbd5e1',
+              vLineColor: () => '#cbd5e1',
+              hLineWidth: () => .5,
+              vLineWidth: () => .5,
+              paddingTop: () => 4, paddingBottom: () => 4,
+              paddingLeft: () => 6, paddingRight: () => 6,
+            },
+          },
+        ],
+        defaultStyle: { fontSize: 8, color: '#1e293b' },
+      }).download(exportFilename() + '.pdf');
     }
 
     async function runAnalysis() {
