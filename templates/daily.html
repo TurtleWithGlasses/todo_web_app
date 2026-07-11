@@ -1314,6 +1314,7 @@
       color: var(--text-secondary);
       vertical-align: top;
     }
+    .d-analysis-table td.t-date  { white-space: nowrap; }
     .d-analysis-table td.t-title { color: var(--text-primary); font-weight: 500; }
     .d-analysis-table td.t-desc  { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .d-analysis-table tr:last-child td { border-bottom: none; }
@@ -2777,7 +2778,7 @@
 
       document.getElementById('analysisTableBody').innerHTML = rows.map(t => `
         <tr>
-          <td>${fmtAnalysisDate(t.date)}</td>
+          <td class="t-date">${fmtAnalysisDate(t.date)}</td>
           <td class="t-title">${escHtml(t.title)}</td>
           <td class="t-desc" title="${escHtml(t.description)}">${escHtml(t.description) || '—'}</td>
           <td>${t.time || '—'}</td>
