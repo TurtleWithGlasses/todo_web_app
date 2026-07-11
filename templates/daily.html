@@ -27,6 +27,21 @@
 
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
+    /* ── Scrollbars (theme) ── */
+    * {
+      scrollbar-width: thin;                          /* Firefox */
+      scrollbar-color: #2e3a52 transparent;
+    }
+    *::-webkit-scrollbar { width: 9px; height: 9px; } /* Chrome / Opera / Edge */
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb {
+      background: #2e3a52;
+      border-radius: 8px;
+      border: 2px solid var(--bg-secondary);
+    }
+    *::-webkit-scrollbar-thumb:hover { background: var(--da-dim); }
+    *::-webkit-scrollbar-corner { background: transparent; }
+
     body {
       font-family: 'Outfit', sans-serif;
       min-height: 100vh;
