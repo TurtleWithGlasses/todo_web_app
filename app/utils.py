@@ -287,7 +287,7 @@ def get_daily_stats(date: str):
         completed = sum(1 for t in tasks if t.status == "tamamlandı")
         return {"total": total, "completed": completed}
 
-def get_analysis(from_date: str, to_date: str):
+def get_analysis(from_date: str, to_date: str, category: str = None):
     """Return per-day stats and category breakdown for a date range."""
     from datetime import date as DateType, timedelta
     from collections import defaultdict
@@ -304,11 +304,10 @@ def get_analysis(from_date: str, to_date: str):
         cur += timedelta(days=1)
 
     with SessionLocal() as db:
-        tasks = (
-            db.query(DailyTask)
-            .filter(DailyTask.date.in_(days))
-            .all()
-        )
+        query = db.query(DailyTask).filter(DailyTask.date.in_(days))
+        if category:
+            query = query.filter(DailyTask.category == category)
+        tasks = query.all()
 
     totals    = defaultdict(int)
     completed = defaultdict(int)

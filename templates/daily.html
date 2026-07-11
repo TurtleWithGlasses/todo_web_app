@@ -1655,6 +1655,12 @@
           <label class="d-fl">Bitiş</label>
           <input class="d-fi" id="aTo" type="date" />
         </div>
+        <div class="d-fg">
+          <label class="d-fl">Kategori</label>
+          <select class="d-fs" id="aCategory" onchange="runAnalysis()">
+            <option value="">Tümü</option>
+          </select>
+        </div>
         <button class="d-analysis-run" onclick="runAnalysis()">Analiz Et</button>
       </div>
 
@@ -2056,6 +2062,13 @@
       sel.innerHTML = '<option value="">Seç...</option>' +
         allCategories.map(cat =>
           `<option value="${escHtml(cat.name)}"${cat.name === current ? ' selected' : ''}>${escHtml(cat.name)}</option>`
+        ).join('');
+
+      const aSel = document.getElementById('aCategory');
+      const aCurrent = aSel.value;
+      aSel.innerHTML = '<option value="">Tümü</option>' +
+        allCategories.map(cat =>
+          `<option value="${escHtml(cat.name)}"${cat.name === aCurrent ? ' selected' : ''}>${escHtml(cat.name)}</option>`
         ).join('');
     }
 
@@ -2949,7 +2962,9 @@
       const to   = document.getElementById('aTo').value;
       if (!from || !to) return;
 
-      const res  = await fetch(`/daily/analysis?from=${from}&to=${to}`);
+      const category = document.getElementById('aCategory').value;
+      const catParam = category ? `&category=${encodeURIComponent(category)}` : '';
+      const res  = await fetch(`/daily/analysis?from=${from}&to=${to}${catParam}`);
       const data = await res.json();
 
       const { daily, categories } = data;

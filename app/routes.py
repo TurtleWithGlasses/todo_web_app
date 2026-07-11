@@ -308,6 +308,7 @@ def daily_weekly_stats():
 def daily_analysis():
     from_date = request.args.get("from")
     to_date   = request.args.get("to")
+    category  = request.args.get("category") or None
     if not from_date or not to_date:
         return jsonify({"error": "from and to required"}), 400
-    return jsonify(get_analysis(from_date, to_date))
+    return jsonify(get_analysis(from_date, to_date, category=category))
