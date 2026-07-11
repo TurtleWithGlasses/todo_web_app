@@ -2110,7 +2110,7 @@
       });
       await loadCategories();
       renderCatMgrList();
-      renderTasks();
+      await loadTasks(); // re-fetch: rename cascades to tasks on the server
     }
 
     async function updateCatColor(id, color) {

@@ -122,8 +122,14 @@ def update_category(cat_id: int, name: str = None, color: str = None):
     with SessionLocal() as db:
         cat = db.get(Category, cat_id)
         if cat:
+            old_name = cat.name
             if name is not None:
                 cat.name = name
+                if name != old_name:
+                    # Tasks reference the category by name — cascade the rename
+                    db.query(DailyTask).filter(DailyTask.category == old_name).update(
+                        {DailyTask.category: name}
+                    )
             if color is not None:
                 cat.color = color
             db.commit()
