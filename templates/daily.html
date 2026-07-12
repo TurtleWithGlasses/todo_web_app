@@ -1316,6 +1316,50 @@
       font-size: .9rem;
     }
 
+    /* ── Category heatmap ── */
+    .d-hm-wrap { overflow-x: auto; padding-bottom: 4px; }
+    .d-hm-row  { display: flex; align-items: center; gap: 3px; margin-bottom: 3px; }
+    .d-hm-label {
+      flex: 0 0 120px;
+      font-size: .72rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: right;
+      padding-right: 8px;
+    }
+    .d-hm-cells { display: flex; gap: 3px; }
+    .d-hm-cell {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      cursor: default;
+    }
+    .d-hm-cell:hover { outline: 1px solid var(--da); }
+    .d-hm-axis-cell { width: 16px; height: 42px; position: relative; flex-shrink: 0; }
+    .d-hm-axis-cell span {
+      position: absolute;
+      top: 4px;
+      left: 9px;
+      transform: rotate(55deg);
+      transform-origin: left top;
+      font-size: .62rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .d-hm-legend {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: flex-end;
+      font-size: .68rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+    .d-hm-legend .d-hm-cell { outline: none; }
+
     /* ── Analysis task table ── */
     .d-analysis-table-box {
       background: var(--bg-card);
@@ -1735,6 +1779,11 @@
         <div class="d-analysis-chart-box">
           <div class="d-analysis-chart-title">Kategoriye Göre Dağılım</div>
           <canvas id="chartDoughnut" height="180"></canvas>
+        </div>
+        <div class="d-analysis-chart-box wide">
+          <div class="d-analysis-chart-title">Kategori Yoğunluk Haritası</div>
+          <div class="d-hm-wrap" id="heatmapGrid"></div>
+          <div class="d-hm-legend" id="heatmapLegend"></div>
         </div>
       </div>
 
@@ -3013,6 +3062,81 @@
       `).join('');
     }
 
+    // ── Category heatmap ──────────────────────────────────
+    function hexToRgba(hex, a) {
+      const m = (hex || '#64748b').replace('#', '');
+      const r = parseInt(m.substr(0, 2), 16);
+      const g = parseInt(m.substr(2, 2), 16);
+      const b = parseInt(m.substr(4, 2), 16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    function renderHeatmap(fromStr, toStr) {
+      const days = [];
+      const cur = new Date(fromStr + 'T00:00:00');
+      const end = new Date(toStr + 'T00:00:00');
+      while (cur <= end) {
+        days.push(isoDate(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      const cats = [...new Set(analysisTasks.map(t => t.category || 'Diğer'))]
+        .sort((a, b) => a.localeCompare(b, 'tr'));
+
+      // counts[cat][day] = { total, done }
+      const counts = {};
+      cats.forEach(c => counts[c] = {});
+      let max = 0;
+      analysisTasks.forEach(t => {
+        const c = t.category || 'Diğer';
+        const e = counts[c][t.date] || (counts[c][t.date] = { total: 0, done: 0 });
+        e.total++;
+        if (t.status === 'tamamlandı') e.done++;
+        if (e.total > max) max = e.total;
+      });
+
+      const catColor = name =>
+        (allCategories.find(c => c.name === name) || {}).color || '#64748b';
+      const fmtShort = d =>
+        new Date(d + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+
+      const labelStep = Math.max(1, Math.ceil(days.length / 16));
+
+      let html = '';
+      cats.forEach(cat => {
+        const color = catColor(cat);
+        html += `<div class="d-hm-row"><div class="d-hm-label" title="${escHtml(cat)}">${escHtml(cat)}</div><div class="d-hm-cells">`;
+        days.forEach(d => {
+          const e = counts[cat][d];
+          const bg = e
+            ? hexToRgba(color, 0.25 + 0.75 * (e.total / max))
+            : 'rgba(255,255,255,0.04)';
+          const tip = `${fmtShort(d)} — ${cat}: ${e ? e.total : 0} görev${e ? ` (${e.done} tamamlandı)` : ''}`;
+          html += `<div class="d-hm-cell" style="background:${bg}" title="${escHtml(tip)}"></div>`;
+        });
+        html += `</div></div>`;
+      });
+
+      // Date axis (rotated labels, thinned for long ranges)
+      html += `<div class="d-hm-row"><div class="d-hm-label"></div><div class="d-hm-cells">` +
+        days.map((d, i) =>
+          `<div class="d-hm-axis-cell">${i % labelStep === 0 ? `<span>${fmtShort(d)}</span>` : ''}</div>`
+        ).join('') +
+        `</div></div>`;
+
+      document.getElementById('heatmapGrid').innerHTML = html;
+
+      // Legend: az → çok intensity scale
+      document.getElementById('heatmapLegend').innerHTML =
+        max > 0
+          ? `az ` +
+            [0.25, 0.45, 0.65, 0.85, 1].map(a =>
+              `<div class="d-hm-cell" style="background:${hexToRgba('#06b6d4', a)}"></div>`
+            ).join('') +
+            ` çok (en yoğun: ${max} görev)`
+          : '';
+    }
+
     // ── Export (Excel / Word / PDF) ───────────────────────
     const EXPORT_HEADERS = ['Tarih', 'Başlık', 'Açıklama', 'Saat', 'Kategori', 'Öncelik', 'Durum'];
     const _scriptCache = {};
@@ -3188,6 +3312,7 @@
 
       analysisTasks = data.tasks || [];
       renderAnalysisTable();
+      renderHeatmap(from, to);
 
       // Summary stats
       const rate    = Math.round((totalDone / totalTasks) * 100);
