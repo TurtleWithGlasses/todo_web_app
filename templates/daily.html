@@ -1914,6 +1914,7 @@
     let timerSecs    = 25 * 60;
     let timerRunning = false;
     let timerInterval = null;
+    let timerEndAt   = null;  // wall-clock end timestamp while running
     let pomodorosDone = 0;        // completed focus sessions today
     const POMO_C     = 2 * Math.PI * 56; // r=56 → ~351.9
 
@@ -2576,24 +2577,34 @@
         if ('Notification' in window && Notification.permission === 'default') {
           Notification.requestPermission().then(renderNotifStatus);
         }
-        // Start / resume
+        // Start / resume — anchor to wall clock so background-tab
+        // timer throttling can't slow the countdown
         timerRunning = true;
+        timerEndAt   = Date.now() + timerSecs * 1000;
         document.getElementById('timerBtn').innerHTML = '&#9646;&#9646;';
         startMediaSession();
         saveTimerState();
-        timerInterval = setInterval(() => {
-          if (timerSecs <= 0) {
-            clearInterval(timerInterval);
-            timerRunning = false;
-            document.getElementById('timerBtn').innerHTML = '&#9654;';
-            onTimerFinish();
-            return;
-          }
-          timerSecs--;
-          renderTimer();
-        }, 1000);
+        timerInterval = setInterval(timerTick, 1000);
       }
     }
+
+    function timerTick() {
+      timerSecs = Math.max(0, Math.round((timerEndAt - Date.now()) / 1000));
+      if (timerSecs <= 0) {
+        clearInterval(timerInterval);
+        timerRunning = false;
+        document.getElementById('timerBtn').innerHTML = '&#9654;';
+        onTimerFinish();
+        return;
+      }
+      renderTimer();
+    }
+
+    // When the tab regains focus, refresh immediately (a throttled
+    // background tick may be up to a minute away)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && timerRunning) timerTick();
+    });
 
     function resetTimer() {
       clearInterval(timerInterval);
