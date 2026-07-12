@@ -13,6 +13,12 @@ class Task(Base):
     month = Column(String, nullable=False, default="")  # e.g. "2026-05"
 
 
+class Setting(Base):
+    __tablename__ = "settings"
+    key = Column(String, primary_key=True)
+    value = Column(String, default="")
+
+
 class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True)

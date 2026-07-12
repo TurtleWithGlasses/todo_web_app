@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
-from app.models import Base, Task, DailyTask, Category
+from app.models import Base, Task, DailyTask, Category, Setting
 
 engine = create_engine("sqlite:///todo.db", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
@@ -85,6 +85,23 @@ def reset_all_tasks(month: str):
         for task in tasks:
             task.data_status = "☐"
             task.work_status = "☐"
+        db.commit()
+
+
+# --- Setting utilities (key-value store) ---
+
+def get_setting(key: str):
+    with SessionLocal() as db:
+        s = db.get(Setting, key)
+        return s.value if s else None
+
+def set_setting(key: str, value: str):
+    with SessionLocal() as db:
+        s = db.get(Setting, key)
+        if s:
+            s.value = value
+        else:
+            db.add(Setting(key=key, value=value))
         db.commit()
 
 

@@ -11,8 +11,9 @@ from app.utils import (
     get_weekly_stats, get_analysis, move_daily_task, duplicate_daily_task,
     create_repeat_tasks, delete_repeat_group, update_repeat_group, get_month_dots,
     load_categories, add_category, update_category, delete_category,
-    seed_categories,
+    seed_categories, get_setting, set_setting,
 )
+import json
 
 main = Blueprint("main", __name__)
 
@@ -253,6 +254,19 @@ def daily_repeat(id):
 @main.route("/daily/repeat-group/<int:group_id>", methods=["DELETE"])
 def daily_delete_repeat_group(group_id):
     delete_repeat_group(group_id)
+    return jsonify({"success": True})
+
+@main.route("/daily/timer-state", methods=["GET"])
+def timer_state_get():
+    raw = get_setting("pomodoro_state")
+    try:
+        return jsonify(json.loads(raw) if raw else {})
+    except Exception:
+        return jsonify({})
+
+@main.route("/daily/timer-state", methods=["POST"])
+def timer_state_set():
+    set_setting("pomodoro_state", json.dumps(request.get_json() or {}))
     return jsonify({"success": True})
 
 @main.route("/daily/stats", methods=["GET"])

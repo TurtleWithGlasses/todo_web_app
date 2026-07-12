@@ -784,6 +784,19 @@
     }
     .d-pomo-dot.done { background: var(--da); border-color: var(--da); box-shadow: 0 0 6px var(--da-glow); }
 
+    .d-sound-row { display: flex; gap: 8px; margin-top: 10px; }
+    .d-sound-select { flex: 1; padding: 8px 30px 8px 10px; font-size: .78rem; }
+    .d-sound-preview {
+      width: 36px;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--da);
+      font-size: .75rem;
+      transition: border-color .2s;
+    }
+    .d-sound-preview:hover { border-color: var(--da); }
+
     /* Trend bars */
     .d-trend-card {
       background: var(--bg-card);
@@ -1556,6 +1569,17 @@
         <!-- Notification status -->
         <div class="d-notif-row">
           <button class="d-notif-btn" id="notifBtn" onclick="handleNotifBtn()"></button>
+        </div>
+
+        <!-- Notification sound -->
+        <div class="d-sound-row">
+          <select class="d-fs d-sound-select" id="soundSelect" onchange="setPomoSound(this.value)">
+            <option value="klasik">🔔 Klasik Bip</option>
+            <option value="can">🛎️ Çan</option>
+            <option value="dijital">🎛️ Dijital</option>
+            <option value="yumusak">🌙 Yumuşak</option>
+          </select>
+          <button class="d-sound-preview" onclick="playNotifSound(pomoSound)" title="Sesi dene">&#9654;</button>
         </div>
       </div>
 
@@ -2536,6 +2560,7 @@
       const card = document.getElementById('timerCard');
       card.className = 'd-timer-card mode-' + timerMode;
       renderTimer();
+      saveTimerState();
     }
 
     function toggleTimer() {
@@ -2544,6 +2569,8 @@
         clearInterval(timerInterval);
         timerRunning = false;
         document.getElementById('timerBtn').innerHTML = '&#9654;';
+        pauseMediaSession();
+        saveTimerState();
       } else {
         // Request notification permission on first start (non-blocking)
         if ('Notification' in window && Notification.permission === 'default') {
@@ -2552,6 +2579,8 @@
         // Start / resume
         timerRunning = true;
         document.getElementById('timerBtn').innerHTML = '&#9646;&#9646;';
+        startMediaSession();
+        saveTimerState();
         timerInterval = setInterval(() => {
           if (timerSecs <= 0) {
             clearInterval(timerInterval);
@@ -2571,11 +2600,115 @@
       timerRunning = false;
       timerSecs = timerTotal;
       document.getElementById('timerBtn').innerHTML = '&#9654;';
+      pauseMediaSession();
       renderTimer();
+      saveTimerState();
+    }
+
+    // ── Timer persistence (server-side, cross-device) ─────
+    function saveTimerState() {
+      const state = {
+        mode: timerMode,
+        secs: timerSecs,
+        total: timerTotal,
+        running: timerRunning,
+        started_at: timerRunning ? Date.now() : null,
+        pomodorosDone,
+        date: isoDate(new Date()),
+      };
+      fetch('/daily/timer-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state),
+      }).catch(() => {});
+    }
+
+    async function restoreTimerState() {
+      try {
+        const res = await fetch('/daily/timer-state');
+        const st  = await res.json();
+        if (!st || !st.mode) return;
+
+        timerMode  = st.mode;
+        timerTotal = st.total || TIMER_MODES[timerMode] * 60;
+        document.querySelectorAll('.d-tmode').forEach(b =>
+          b.classList.toggle('active', b.dataset.mode === timerMode));
+        document.getElementById('timerCard').className = 'd-timer-card mode-' + timerMode;
+
+        // Session dots only carry over within the same day
+        if (st.date === isoDate(new Date())) {
+          pomodorosDone = st.pomodorosDone || 0;
+          updateSessionDots();
+        }
+
+        let secs = st.secs;
+        if (st.running && st.started_at) {
+          secs = st.secs - Math.floor((Date.now() - st.started_at) / 1000);
+        }
+        if (secs > 0 && secs <= timerTotal) {
+          timerSecs = secs;
+          if (st.running) toggleTimer(); // auto-resume a running timer
+        } else {
+          timerSecs = timerTotal; // expired while away — fresh start
+        }
+        renderTimer();
+      } catch (_) { /* offline — keep defaults */ }
+    }
+
+    // ── Media Session: play/pause/stop in tab preview / OS media UI ──
+    let mediaAudioEl = null;
+
+    function ensureMediaAudio() {
+      if (mediaAudioEl) return;
+      try {
+        const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+        const dest = ctx.createMediaStreamDestination();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0; // silent — only exists so the browser treats the tab as playing media
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start();
+        mediaAudioEl = new Audio();
+        mediaAudioEl.srcObject = dest.stream;
+      } catch (_) { /* no audio support */ }
+    }
+
+    function updateMediaSessionMeta() {
+      if (!('mediaSession' in navigator)) return;
+      const m = String(Math.floor(timerSecs / 60)).padStart(2, '0');
+      const s = String(timerSecs % 60).padStart(2, '0');
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: `${m}:${s} — ${timerMode === 'odak' ? 'Odak' : 'Mola'}`,
+          artist: 'Pomodoro · Günlük İş Takibi',
+        });
+      } catch (_) {}
+    }
+
+    function startMediaSession() {
+      if (!('mediaSession' in navigator)) return;
+      ensureMediaAudio();
+      if (mediaAudioEl) mediaAudioEl.play().catch(() => {});
+      updateMediaSessionMeta();
+      try {
+        navigator.mediaSession.playbackState = 'playing';
+        navigator.mediaSession.setActionHandler('play',  () => { if (!timerRunning) toggleTimer(); });
+        navigator.mediaSession.setActionHandler('pause', () => { if (timerRunning)  toggleTimer(); });
+        navigator.mediaSession.setActionHandler('stop',  () => resetTimer());
+      } catch (_) {}
+    }
+
+    function pauseMediaSession() {
+      if (mediaAudioEl) mediaAudioEl.pause();
+      if ('mediaSession' in navigator) {
+        try { navigator.mediaSession.playbackState = 'paused'; } catch (_) {}
+      }
     }
 
     function onTimerFinish() {
-      playBeep();
+      playNotifSound(pomoSound);
+      pauseMediaSession();
       timerSecs = timerTotal;
       renderTimer();
 
@@ -2590,6 +2723,7 @@
         showTimerToast('Mola bitti! Odak zamanı.');
         sendNotification(`⏰ ${label} bitti!`, 'Yeni bir odak seansı başlatmaya hazır mısın?');
       }
+      saveTimerState();
     }
 
     function renderTimer() {
@@ -2607,6 +2741,9 @@
       // SVG ring: full at start, depletes to 0
       const pct = timerSecs / timerTotal;
       document.getElementById('pomoFill').style.strokeDashoffset = POMO_C * (1 - pct);
+
+      // Keep tab-preview / OS media controls label fresh
+      if (timerRunning && timerSecs % 5 === 0) updateMediaSessionMeta();
     }
 
     function updateSessionDots() {
@@ -2621,22 +2758,56 @@
                     : `${total} seans tamamlandı`;
     }
 
-    // Simple two-tone beep via Web Audio API (no external files)
-    function playBeep() {
+    // ── Notification sounds (Web Audio, no external files) ──
+    let pomoSound = localStorage.getItem('pomoSound') || 'klasik';
+
+    function setPomoSound(v) {
+      pomoSound = v;
+      localStorage.setItem('pomoSound', v);
+    }
+
+    function playNotifSound(type) {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        [660, 880].forEach((freq, i) => {
+        const tone = (freq, t0, dur, wave = 'sine', vol = 0.25) => {
           const osc  = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.connect(gain);
           gain.connect(ctx.destination);
+          osc.type = wave;
           osc.frequency.value = freq;
-          osc.type = 'sine';
-          gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.2);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.2 + 0.4);
-          osc.start(ctx.currentTime + i * 0.2);
-          osc.stop(ctx.currentTime  + i * 0.2 + 0.4);
-        });
+          gain.gain.setValueAtTime(vol, ctx.currentTime + t0);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t0 + dur);
+          osc.start(ctx.currentTime + t0);
+          osc.stop(ctx.currentTime + t0 + dur);
+        };
+        if (type === 'can') {
+          // Bell: fundamental + harmonics with long decay
+          tone(880,  0, 1.4, 'sine', .3);
+          tone(1760, 0, 1.0, 'sine', .12);
+          tone(2640, 0, 0.6, 'sine', .05);
+        } else if (type === 'dijital') {
+          // Digital: rising three-note square chirp
+          tone(520, 0,    .12, 'square', .16);
+          tone(660, .15,  .12, 'square', .16);
+          tone(784, .30,  .22, 'square', .16);
+        } else if (type === 'yumusak') {
+          // Soft: slow-attack warm triangle
+          const osc = ctx.createOscillator();
+          const g   = ctx.createGain();
+          osc.connect(g); g.connect(ctx.destination);
+          osc.type = 'triangle';
+          osc.frequency.value = 432;
+          g.gain.setValueAtTime(0.001, ctx.currentTime);
+          g.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.3);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.6);
+          osc.start();
+          osc.stop(ctx.currentTime + 1.6);
+        } else {
+          // Klasik: original two-tone beep
+          tone(660, 0,  .4);
+          tone(880, .2, .4);
+        }
       } catch (_) { /* Audio not supported — silent */ }
     }
 
@@ -3464,6 +3635,8 @@
       setupTimeInput('fTime');
       setupTimeInput('transferTime');
       setupTimeInput('repeatTime');
+      document.getElementById('soundSelect').value = pomoSound;
+      restoreTimerState();
       await loadCategories();
       loadTasks(); // also calls buildTrend() internally
 
