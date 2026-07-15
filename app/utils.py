@@ -383,16 +383,19 @@ def get_weekly_stats(reference_date: str):
     from collections import defaultdict
     totals    = defaultdict(int)
     completed = defaultdict(int)
+    cat_done  = defaultdict(lambda: defaultdict(int))
     for t in tasks:
         totals[t.date] += 1
         if t.status == "tamamlandı":
             completed[t.date] += 1
+            cat_done[t.date][t.category or "Diğer"] += 1
 
     return [
         {
             "date":      d,
             "total":     totals[d],
             "completed": completed[d],
+            "cats":      dict(cat_done[d]),  # completed count per category
         }
         for d in date_strs
     ]

@@ -843,6 +843,7 @@
       background: linear-gradient(to top, var(--da), rgba(6,182,212,.45));
       transition: flex .5s ease;
     }
+    .d-bar-seg { transition: flex .5s ease; }
     .d-bar-wrap:hover .d-bar { opacity: 1; }
     .d-bar-wrap.today .d-bar {
       opacity: 1;
@@ -1995,6 +1996,9 @@
       // Bar height relative to the busiest day's total task count
       const maxTotal = Math.max(...data.map(d => d.total), 1);
 
+      const catColor = name =>
+        (allCategories.find(c => c.name === name) || {}).color || '#64748b';
+
       barsEl.innerHTML = data.map(d => {
         const isToday   = d.date === todayIso;
         const isCurrent = d.date === isoDate(currentDate);
@@ -2002,10 +2006,15 @@
         const incomplete = d.total - d.completed;
 
         const heightPct = Math.max((d.total / maxTotal) * 100, d.total > 0 ? 8 : 4);
+        const todoFlex = d.total > 0 ? incomplete : 1;
 
-        // flex values split the bar proportionally between done and todo
-        const doneFlex = d.total > 0 ? d.completed  : 0;
-        const todoFlex = d.total > 0 ? incomplete    : 1;
+        // Completed portion: one segment per category, most-completed at
+        // the base, descending upward (DOM order is top→bottom)
+        const segs = Object.entries(d.cats || {})
+          .sort((a, b) => a[1] - b[1])  // ascending → largest ends up last (bottom)
+          .map(([name, count]) =>
+            `<div class="d-bar-seg" style="flex:${count};background:linear-gradient(to top, ${catColor(name)}, ${hexToRgba(catColor(name), .55)})"></div>`
+          ).join('');
 
         const tooltipText = isEmpty
           ? 'Görev yok'
@@ -2021,7 +2030,7 @@
             <div class="d-bar-tooltip">${tooltipText}</div>
             <div class="d-bar" style="height:${heightPct}%">
               <div class="d-bar-todo" style="flex:${todoFlex}"></div>
-              <div class="d-bar-done" style="flex:${doneFlex}"></div>
+              ${segs}
             </div>
           </div>`;
       }).join('');
