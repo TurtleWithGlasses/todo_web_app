@@ -384,11 +384,18 @@ def get_weekly_stats(reference_date: str):
     totals    = defaultdict(int)
     completed = defaultdict(int)
     cat_done  = defaultdict(lambda: defaultdict(int))
+    day_tasks = defaultdict(list)
     for t in tasks:
         totals[t.date] += 1
         if t.status == "tamamlandı":
             completed[t.date] += 1
             cat_done[t.date][t.category or "Diğer"] += 1
+        day_tasks[t.date].append({
+            "title":    t.title,
+            "category": t.category or "Diğer",
+            "done":     t.status == "tamamlandı",
+            "time":     t.time or "",
+        })
 
     return [
         {
@@ -396,6 +403,7 @@ def get_weekly_stats(reference_date: str):
             "total":     totals[d],
             "completed": completed[d],
             "cats":      dict(cat_done[d]),  # completed count per category
+            "tasks":     sorted(day_tasks[d], key=lambda x: x["time"] or "99:99"),
         }
         for d in date_strs
     ]

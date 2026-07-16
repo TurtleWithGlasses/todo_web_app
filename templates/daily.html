@@ -887,6 +887,7 @@
       padding: 5px 9px;
       font-size: .68rem;
       white-space: nowrap;
+      text-align: left;
       color: var(--text-primary);
       box-shadow: 0 4px 12px rgba(0,0,0,.4);
       pointer-events: none;
@@ -895,6 +896,11 @@
       z-index: 10;
     }
     .d-bar-wrap:hover .d-bar-tooltip { opacity: 1; }
+    .d-bt-head { font-weight: 600; margin-bottom: 3px; }
+    .d-bt-item { display: flex; align-items: center; gap: 5px; line-height: 1.55; color: var(--text-secondary); }
+    .d-bt-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .d-bt-t    { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+    .d-bt-more { color: var(--text-muted); margin-top: 2px; }
 
     .d-trend-labels {
       display: flex; gap: 5px; margin-top: 6px;
@@ -2016,9 +2022,15 @@
             `<div class="d-bar-seg" style="flex:${count};background:linear-gradient(to top, ${catColor(name)}, ${hexToRgba(catColor(name), .55)})"></div>`
           ).join('');
 
+        const dayTasks = d.tasks || [];
+        const taskItems = dayTasks.slice(0, 8).map(t =>
+          `<div class="d-bt-item"><span class="d-bt-dot" style="background:${catColor(t.category)}"></span><span class="d-bt-t">${t.done ? '✓' : '○'} ${escHtml(t.title)}</span></div>`
+        ).join('');
+        const moreLine = dayTasks.length > 8
+          ? `<div class="d-bt-more">+${dayTasks.length - 8} görev daha</div>` : '';
         const tooltipText = isEmpty
           ? 'Görev yok'
-          : `${d.completed}/${d.total} tamamlandı`;
+          : `<div class="d-bt-head">${d.completed}/${d.total} tamamlandı</div>${taskItems}${moreLine}`;
 
         const cls = ['d-bar-wrap',
           isToday || isCurrent ? 'today' : '',
@@ -3299,6 +3311,7 @@
       const data = await res.json();
 
       const { daily, categories } = data;
+      analysisTasks = data.tasks || [];
       const totalTasks = daily.reduce((s, d) => s + d.total, 0);
       const totalDone  = daily.reduce((s, d) => s + d.completed, 0);
 
@@ -3321,7 +3334,6 @@
       chartsEl.style.display  = 'grid';
       tableEl.style.display   = '';
 
-      analysisTasks = data.tasks || [];
       renderAnalysisTable();
       renderHeatmap(from, to);
 
@@ -3383,18 +3395,53 @@
         },
       });
 
-      // ── Stacked bar: completed vs incomplete ──
+      // ── Stacked bar: completed (per category) vs incomplete ──
+      const barCatColor = name =>
+        (allCategories.find(c => c.name === name) || {}).color || '#64748b';
+
+      // date -> {cat: completedCount} and date -> tasks[] for tooltips
+      const dayCatDone  = {};
+      const dayTasksMap = {};
+      analysisTasks.forEach(t => {
+        (dayTasksMap[t.date] = dayTasksMap[t.date] || []).push(t);
+        if (t.status === 'tamamlandı') {
+          const c = t.category || 'Diğer';
+          const m = dayCatDone[t.date] = dayCatDone[t.date] || {};
+          m[c] = (m[c] || 0) + 1;
+        }
+      });
+      const barCats = [...new Set(
+        analysisTasks.filter(t => t.status === 'tamamlandı').map(t => t.category || 'Diğer')
+      )].sort((a, b) => a.localeCompare(b, 'tr'));
+
+      const barTooltip = {
+        callbacks: {
+          title: items => labels[items[0].dataIndex],
+          label: ctx => {
+            const date   = daily[ctx.dataIndex].date;
+            const isTodo = ctx.dataset.label === 'Tamamlanmadı';
+            const list = (dayTasksMap[date] || []).filter(t =>
+              isTodo ? t.status !== 'tamamlandı'
+                     : (t.status === 'tamamlandı' && (t.category || 'Diğer') === ctx.dataset.label));
+            const lines = [` ${ctx.dataset.label}: ${ctx.parsed.y}`];
+            list.slice(0, 6).forEach(t => lines.push(`   • ${t.title}`));
+            if (list.length > 6) lines.push(`   +${list.length - 6} görev daha`);
+            return lines;
+          },
+        },
+      };
+
       chartBar = new Chart(document.getElementById('chartBar'), {
         type: 'bar',
         data: {
           labels: tickLabels,
           datasets: [
-            {
-              label: 'Tamamlanan',
-              data: daily.map(d => d.completed),
-              backgroundColor: 'rgba(6,182,212,.7)',
+            ...barCats.map(c => ({
+              label: c,
+              data: daily.map(d => (dayCatDone[d.date] || {})[c] || 0),
+              backgroundColor: barCatColor(c) + 'cc',
               borderRadius: 2,
-            },
+            })),
             {
               label: 'Tamamlanmadı',
               data: daily.map(d => d.total - d.completed),
@@ -3404,7 +3451,10 @@
           ],
         },
         options: {
-          plugins: { legend: { position: 'top' } },
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, padding: 8 } },
+            tooltip: barTooltip,
+          },
           scales: {
             x: { stacked: true, grid: { color: 'rgba(255,255,255,.05)' }, ticks: { maxRotation: 0 } },
             y: { stacked: true, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true, ticks: { precision: 0 } },
