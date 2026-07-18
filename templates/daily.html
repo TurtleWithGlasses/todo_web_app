@@ -1991,6 +1991,19 @@
     }
 
     // ── Weekly trend chart ───────────────────────────────
+    // Collapse duplicate titles: [{title, category, done, count}], most frequent first
+    function groupTaskTitles(tasks) {
+      const map = new Map();
+      tasks.forEach(t => {
+        const done = t.done !== undefined ? t.done : t.status === 'tamamlandı';
+        const key  = `${t.title}|${t.category || 'Diğer'}|${done}`;
+        const e = map.get(key);
+        if (e) e.count++;
+        else map.set(key, { title: t.title, category: t.category || 'Diğer', done, count: 1 });
+      });
+      return [...map.values()].sort((a, b) => b.count - a.count);
+    }
+
     async function buildTrend() {
       const res  = await fetch(`/daily/weekly-stats?date=${isoDate(currentDate)}`);
       const data = await res.json(); // [{date, total, completed}, ...]
@@ -2022,12 +2035,12 @@
             `<div class="d-bar-seg" style="flex:${count};background:linear-gradient(to top, ${catColor(name)}, ${hexToRgba(catColor(name), .55)})"></div>`
           ).join('');
 
-        const dayTasks = d.tasks || [];
-        const taskItems = dayTasks.slice(0, 8).map(t =>
-          `<div class="d-bt-item"><span class="d-bt-dot" style="background:${catColor(t.category)}"></span><span class="d-bt-t">${t.done ? '✓' : '○'} ${escHtml(t.title)}</span></div>`
+        const grouped = groupTaskTitles(d.tasks || []);
+        const taskItems = grouped.slice(0, 8).map(g =>
+          `<div class="d-bt-item"><span class="d-bt-dot" style="background:${catColor(g.category)}"></span><span class="d-bt-t">${g.done ? '✓' : '○'} ${escHtml(g.title)}${g.count > 1 ? ` (${g.count})` : ''}</span></div>`
         ).join('');
-        const moreLine = dayTasks.length > 8
-          ? `<div class="d-bt-more">+${dayTasks.length - 8} görev daha</div>` : '';
+        const moreLine = grouped.length > 8
+          ? `<div class="d-bt-more">+${grouped.length - 8} görev daha</div>` : '';
         const tooltipText = isEmpty
           ? 'Görev yok'
           : `<div class="d-bt-head">${d.completed}/${d.total} tamamlandı</div>${taskItems}${moreLine}`;
@@ -3423,9 +3436,11 @@
             const list = (dayTasksMap[date] || []).filter(t =>
               isTodo ? t.status !== 'tamamlandı'
                      : (t.status === 'tamamlandı' && (t.category || 'Diğer') === ctx.dataset.label));
+            const grouped = groupTaskTitles(list);
             const lines = [` ${ctx.dataset.label}: ${ctx.parsed.y}`];
-            list.slice(0, 6).forEach(t => lines.push(`   • ${t.title}`));
-            if (list.length > 6) lines.push(`   +${list.length - 6} görev daha`);
+            grouped.slice(0, 6).forEach(g =>
+              lines.push(`   • ${g.title}${g.count > 1 ? ` (${g.count})` : ''}`));
+            if (grouped.length > 6) lines.push(`   +${grouped.length - 6} görev daha`);
             return lines;
           },
         },
