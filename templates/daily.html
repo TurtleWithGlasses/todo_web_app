@@ -897,7 +897,9 @@
     }
     .d-bar-wrap:hover .d-bar-tooltip { opacity: 1; }
     .d-bt-head { font-weight: 600; margin-bottom: 3px; }
+    .d-bt-cat  { display: flex; align-items: center; gap: 5px; font-weight: 600; margin-top: 4px; color: var(--text-primary); }
     .d-bt-item { display: flex; align-items: center; gap: 5px; line-height: 1.55; color: var(--text-secondary); }
+    .d-bt-sub  { padding-left: 12px; }
     .d-bt-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
     .d-bt-t    { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
     .d-bt-more { color: var(--text-muted); margin-top: 2px; }
@@ -2035,12 +2037,28 @@
             `<div class="d-bar-seg" style="flex:${count};background:linear-gradient(to top, ${catColor(name)}, ${hexToRgba(catColor(name), .55)})"></div>`
           ).join('');
 
+        // Group titles under category headers, biggest categories first
         const grouped = groupTaskTitles(d.tasks || []);
-        const taskItems = grouped.slice(0, 8).map(g =>
-          `<div class="d-bt-item"><span class="d-bt-dot" style="background:${catColor(g.category)}"></span><span class="d-bt-t">${g.done ? '✓' : '○'} ${escHtml(g.title)}${g.count > 1 ? ` (${g.count})` : ''}</span></div>`
-        ).join('');
-        const moreLine = grouped.length > 8
-          ? `<div class="d-bt-more">+${grouped.length - 8} görev daha</div>` : '';
+        const byCat = new Map();
+        grouped.forEach(g => {
+          if (!byCat.has(g.category)) byCat.set(g.category, []);
+          byCat.get(g.category).push(g);
+        });
+        const catOrder = [...byCat.entries()]
+          .sort((a, b) => b[1].reduce((s, g) => s + g.count, 0) - a[1].reduce((s, g) => s + g.count, 0));
+        const MAX_ITEMS = 8;
+        let shown = 0, taskItems = '';
+        for (const [cat, items] of catOrder) {
+          if (shown >= MAX_ITEMS) break;
+          taskItems += `<div class="d-bt-cat"><span class="d-bt-dot" style="background:${catColor(cat)}"></span>${escHtml(cat)}</div>`;
+          for (const g of items) {
+            if (shown >= MAX_ITEMS) break;
+            taskItems += `<div class="d-bt-item d-bt-sub"><span class="d-bt-t">${g.done ? '✓' : '○'} ${escHtml(g.title)}${g.count > 1 ? ` (${g.count})` : ''}</span></div>`;
+            shown++;
+          }
+        }
+        const moreLine = grouped.length > shown
+          ? `<div class="d-bt-more">+${grouped.length - shown} görev daha</div>` : '';
         const tooltipText = isEmpty
           ? 'Görev yok'
           : `<div class="d-bt-head">${d.completed}/${d.total} tamamlandı</div>${taskItems}${moreLine}`;
@@ -2066,6 +2084,21 @@
         const label = date.toLocaleDateString('tr-TR', { weekday: 'short' });
         return `<div class="d-trend-day${isToday ? ' today' : ''}">${label}</div>`;
       }).join('');
+
+      // Keep tooltips inside the viewport (trend card sits at screen edge)
+      barsEl.querySelectorAll('.d-bar-wrap').forEach(wrap => {
+        wrap.addEventListener('mouseenter', () => {
+          const tip = wrap.querySelector('.d-bar-tooltip');
+          if (!tip) return;
+          tip.style.transform = 'translateX(-50%)';
+          const r = tip.getBoundingClientRect();
+          const pad = 8;
+          let shift = 0;
+          if (r.right > window.innerWidth - pad) shift = (window.innerWidth - pad) - r.right;
+          else if (r.left < pad) shift = pad - r.left;
+          if (shift) tip.style.transform = `translateX(calc(-50% + ${shift}px))`;
+        });
+      });
     }
 
     // ── Load & render tasks ──────────────────────────────
