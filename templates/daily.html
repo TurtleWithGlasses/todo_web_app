@@ -2050,7 +2050,8 @@
         let shown = 0, taskItems = '';
         for (const [cat, items] of catOrder) {
           if (shown >= MAX_ITEMS) break;
-          taskItems += `<div class="d-bt-cat"><span class="d-bt-dot" style="background:${catColor(cat)}"></span>${escHtml(cat)}</div>`;
+          const catTotal = items.reduce((s, g) => s + g.count, 0);
+          taskItems += `<div class="d-bt-cat"><span class="d-bt-dot" style="background:${catColor(cat)}"></span>${escHtml(cat)}: ${catTotal}</div>`;
           for (const g of items) {
             if (shown >= MAX_ITEMS) break;
             taskItems += `<div class="d-bt-item d-bt-sub"><span class="d-bt-t">${g.done ? '✓' : '○'} ${escHtml(g.title)}${g.count > 1 ? ` (${g.count})` : ''}</span></div>`;
