@@ -875,12 +875,10 @@
     .d-legend-swatch.done { background: var(--da); }
     .d-legend-swatch.todo { background: rgba(100,116,139,.5); }
 
-    /* Tooltip */
+    /* Tooltip — fixed positioning + JS placement so it escapes the
+       right panel's overflow clipping and can't be cut off */
     .d-bar-tooltip {
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
+      position: fixed;
       background: var(--bg-secondary);
       border: 1px solid var(--border);
       border-radius: 7px;
@@ -892,10 +890,11 @@
       box-shadow: 0 4px 12px rgba(0,0,0,.4);
       pointer-events: none;
       opacity: 0;
+      visibility: hidden;
       transition: opacity .15s;
-      z-index: 10;
+      z-index: 999;
     }
-    .d-bar-wrap:hover .d-bar-tooltip { opacity: 1; }
+    .d-bar-wrap:hover .d-bar-tooltip { opacity: 1; visibility: visible; }
     .d-bt-head { font-weight: 600; margin-bottom: 3px; }
     .d-bt-cat  { display: flex; align-items: center; gap: 5px; font-weight: 600; margin-top: 4px; color: var(--text-primary); }
     .d-bt-item { display: flex; align-items: center; gap: 5px; line-height: 1.55; color: var(--text-secondary); }
@@ -2086,18 +2085,24 @@
         return `<div class="d-trend-day${isToday ? ' today' : ''}">${label}</div>`;
       }).join('');
 
-      // Keep tooltips inside the viewport (trend card sits at screen edge)
+      // Position tooltips in fixed (viewport) coordinates so the
+      // right panel's overflow:auto can never clip them
       barsEl.querySelectorAll('.d-bar-wrap').forEach(wrap => {
         wrap.addEventListener('mouseenter', () => {
           const tip = wrap.querySelector('.d-bar-tooltip');
           if (!tip) return;
-          tip.style.transform = 'translateX(-50%)';
-          const r = tip.getBoundingClientRect();
+          const barRect = wrap.getBoundingClientRect();
+          const tipRect = tip.getBoundingClientRect();
           const pad = 8;
-          let shift = 0;
-          if (r.right > window.innerWidth - pad) shift = (window.innerWidth - pad) - r.right;
-          else if (r.left < pad) shift = pad - r.left;
-          if (shift) tip.style.transform = `translateX(calc(-50% + ${shift}px))`;
+
+          let left = barRect.left + barRect.width / 2 - tipRect.width / 2;
+          left = Math.max(pad, Math.min(left, window.innerWidth - tipRect.width - pad));
+
+          let top = barRect.top - tipRect.height - 8;
+          if (top < pad) top = barRect.bottom + 8; // flip below if no room above
+
+          tip.style.left = `${left}px`;
+          tip.style.top  = `${top}px`;
         });
       });
     }
