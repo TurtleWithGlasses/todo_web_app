@@ -5,8 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Günlük İş Takibi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
+  <script>
+    (function () {
+      var t = localStorage.getItem('appTheme');
+      if (t && t !== 'classic') document.documentElement.setAttribute('data-theme', t);
+      var b = localStorage.getItem('appBgMode');
+      if (b && b !== 'dark') document.documentElement.setAttribute('data-bg', b);
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/theme.css">
   <style>
     :root {
       --bg-primary:    #0f1419;
@@ -23,6 +32,56 @@
       --da:            #06b6d4;
       --da-glow:       rgba(6,182,212,0.25);
       --da-dim:        #0891b2;
+      --da-rgb:        6,182,212;
+      --glow-1:        rgba(6,182,212,0.07);
+      --glow-2:        rgba(16,185,129,0.05);
+      --border-hover:  rgba(255,255,255,.16);
+      --veil:          rgba(255,255,255,.05);
+      --header-bg:     rgba(26,31,46,0.85);
+    }
+
+    /* ── Color themes ──────────────────────────────────────
+       'classic' (no data-theme attr) keeps this page's original
+       teal look above. Each theme recolors only the accent +
+       ambient glow — backgrounds/text stay the same dark palette. */
+    :root[data-theme="teal"] {
+      --da: #06b6d4; --da-glow: rgba(6,182,212,.28); --da-dim: #0e7490; --da-rgb: 6,182,212;
+      --glow-1: rgba(6,182,212,.08); --glow-2: rgba(16,185,129,.05);
+    }
+    :root[data-theme="sunset"] {
+      --da: #f59e0b; --da-glow: rgba(245,158,11,.28); --da-dim: #b45309; --da-rgb: 245,158,11;
+      --glow-1: rgba(245,158,11,.09); --glow-2: rgba(239,68,68,.05);
+    }
+    :root[data-theme="violet"] {
+      --da: #a78bfa; --da-glow: rgba(167,139,250,.3); --da-dim: #7c3aed; --da-rgb: 167,139,250;
+      --glow-1: rgba(167,139,250,.09); --glow-2: rgba(236,72,153,.05);
+    }
+    :root[data-theme="emerald"] {
+      --da: #10b981; --da-glow: rgba(16,185,129,.28); --da-dim: #047857; --da-rgb: 16,185,129;
+      --glow-1: rgba(16,185,129,.08); --glow-2: rgba(6,182,212,.05);
+    }
+    :root[data-theme="rose"] {
+      --da: #f43f5e; --da-glow: rgba(244,63,94,.28); --da-dim: #be123c; --da-rgb: 244,63,94;
+      --glow-1: rgba(244,63,94,.08); --glow-2: rgba(167,139,250,.05);
+    }
+    :root[data-theme="ocean"] {
+      --da: #3b82f6; --da-glow: rgba(59,130,246,.28); --da-dim: #1d4ed8; --da-rgb: 59,130,246;
+      --glow-1: rgba(59,130,246,.08); --glow-2: rgba(16,185,129,.05);
+    }
+
+    /* ── Background modes ────────────────────────────────
+       'dark' (no data-bg attr) keeps the palette above. */
+    :root[data-bg="light-gray"] {
+      --bg-primary: #e5e9ee; --bg-secondary: #eef1f5; --bg-card: #ffffff; --bg-card-hover: #f7f9fb;
+      --text-primary: #1c2333; --text-secondary: #4f5b6e; --text-muted: #7c8797;
+      --border: rgba(15,23,42,.10); --border-hover: rgba(15,23,42,.18); --veil: rgba(15,23,42,.06);
+      --header-bg: rgba(238,241,245,0.85);
+    }
+    :root[data-bg="white"] {
+      --bg-primary: #f6f7f9; --bg-secondary: #ffffff; --bg-card: #ffffff; --bg-card-hover: #f2f4f7;
+      --text-primary: #171d2b; --text-secondary: #4a5568; --text-muted: #7a8494;
+      --border: rgba(15,23,42,.08); --border-hover: rgba(15,23,42,.16); --veil: rgba(15,23,42,.05);
+      --header-bg: rgba(255,255,255,0.85);
     }
 
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -46,8 +105,8 @@
       font-family: 'Outfit', sans-serif;
       min-height: 100vh;
       background:
-        radial-gradient(ellipse at 15% 0%,  rgba(6,182,212,0.07)  0%, transparent 50%),
-        radial-gradient(ellipse at 85% 100%, rgba(16,185,129,0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 15% 0%,  var(--glow-1) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 100%, var(--glow-2) 0%, transparent 50%),
         var(--bg-primary);
       color: var(--text-primary);
       line-height: 1.6;
@@ -67,8 +126,14 @@
       padding: 0 28px;
       height: 60px;
       border-bottom: 1px solid var(--border);
-      background: rgba(26,31,46,0.85);
+      background: var(--header-bg);
       backdrop-filter: blur(12px);
+      /* backdrop-filter creates a stacking context — without an
+         explicit z-index here, header's popovers (theme picker)
+         would be trapped inside it and painted BELOW later
+         siblings like .d-layout regardless of their own z-index */
+      position: relative;
+      z-index: 50;
       flex-shrink: 0;
     }
 
@@ -114,7 +179,7 @@
     .d-icon-btn:hover {
       background: var(--bg-card-hover);
       color: var(--text-primary);
-      border-color: rgba(255,255,255,.14);
+      border-color: var(--border-hover);
       transform: translateY(-1px);
     }
     .d-icon-btn .nav-dot {
@@ -219,7 +284,7 @@
     .d-cat-pill[data-cat="Kişisel"]      { color: #f59e0b; }
     .d-cat-pill[data-cat="Toplantılar"]  { color: #a78bfa; }
     .d-cat-pill[data-cat="all"]          { color: var(--text-secondary); }
-    .d-cat-pill[data-cat="all"].active   { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+    .d-cat-pill[data-cat="all"].active   { color: var(--text-primary); border-color: var(--border-hover); }
 
     .d-priorities { display: flex; flex-direction: column; gap: 7px; }
 
@@ -292,7 +357,7 @@
       from { opacity:0; transform: translateY(-8px); }
       to   { opacity:1; transform: translateY(0); }
     }
-    .d-card:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,.12); }
+    .d-card:hover { background: var(--bg-card-hover); border-color: var(--border-hover); }
     .d-card.tamamlandı { opacity: .6; }
     .d-card.tamamlandı .d-card-title { text-decoration: line-through; color: var(--text-muted); }
 
@@ -316,7 +381,7 @@
     }
     .d-status-pill:hover { filter: brightness(1.15); transform: scale(1.03); }
     .pill-yapılacak  { background: rgba(100,116,139,.2); color: var(--text-secondary); }
-    .pill-yapılıyor  { background: rgba(6,182,212,.15);  color: #06b6d4; }
+    .pill-yapılıyor  { background: rgba(var(--da-rgb),.15);  color: var(--da); }
     .pill-tamamlandı { background: rgba(16,185,129,.15); color: #10b981; }
 
     .d-card-desc {
@@ -389,7 +454,7 @@
       transition: all .2s;
       padding: 0;
     }
-    .d-edit-btn:hover { background: rgba(6,182,212,.12); color: var(--da); }
+    .d-edit-btn:hover { background: rgba(var(--da-rgb),.12); color: var(--da); }
 
     .d-move-btn, .d-copy-btn {
       width: 28px; height: 28px;
@@ -446,7 +511,7 @@
       transition: all .2s;
     }
     .d-rep-mode-btn.active {
-      background: rgba(6,182,212,.12); border-color: var(--da);
+      background: rgba(var(--da-rgb),.12); border-color: var(--da);
       color: var(--da);
     }
     .d-rep-dow-row {
@@ -512,9 +577,9 @@
     .d-rep-cal-day.other-month { color: var(--text-muted); opacity: .4; cursor: default; }
     .d-rep-cal-day.today       { color: var(--da); font-weight: 600; }
     .d-rep-cal-day.source      {
-      background: rgba(6,182,212,.15); color: var(--da);
+      background: rgba(var(--da-rgb),.15); color: var(--da);
       font-weight: 700; cursor: default;
-      border: 1px solid rgba(6,182,212,.3);
+      border: 1px solid rgba(var(--da-rgb),.3);
     }
     .d-rep-cal-day.selected    {
       background: rgba(245,158,11,.2); color: #f59e0b;
@@ -659,7 +724,7 @@
       white-space: nowrap;
     }
     .d-notif-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
-    .d-notif-btn.granted { color: var(--da); border-color: rgba(6,182,212,.4); }
+    .d-notif-btn.granted { color: var(--da); border-color: rgba(var(--da-rgb),.4); }
     .d-notif-btn.denied  { color: #ef4444; border-color: rgba(239,68,68,.3); opacity: .8; }
 
     /* Mode tabs */
@@ -757,7 +822,7 @@
       transition: all .2s;
       padding: 0;
     }
-    .d-pomo-reset:hover { color: var(--text-primary); border-color: rgba(255,255,255,.2); }
+    .d-pomo-reset:hover { color: var(--text-primary); border-color: var(--border-hover); }
 
     /* Session dots */
     .d-pomo-sessions {
@@ -840,7 +905,7 @@
       transition: flex .5s ease;
     }
     .d-bar-done {
-      background: linear-gradient(to top, var(--da), rgba(6,182,212,.45));
+      background: linear-gradient(to top, var(--da), rgba(var(--da-rgb),.45));
       transition: flex .5s ease;
     }
     .d-bar-seg { transition: flex .5s ease; }
@@ -850,7 +915,7 @@
       box-shadow: 0 0 10px var(--da-glow);
     }
     .d-bar-wrap.today .d-bar-done {
-      background: linear-gradient(to top, var(--da), rgba(6,182,212,.7));
+      background: linear-gradient(to top, var(--da), rgba(var(--da-rgb),.7));
     }
     .d-bar-wrap.empty .d-bar { opacity: .2; }
 
@@ -1267,7 +1332,7 @@
     .d-analysis-shortcut.active {
       border-color: var(--da);
       color: var(--da);
-      background: rgba(6,182,212,.08);
+      background: rgba(var(--da-rgb),.08);
     }
 
     .d-analysis-summary {
@@ -1348,6 +1413,7 @@
       cursor: default;
     }
     .d-hm-cell:hover { outline: 1px solid var(--da); }
+    .d-hm-cell-empty { background: var(--veil); }
     .d-hm-axis-cell { width: 16px; height: 42px; position: relative; flex-shrink: 0; }
     .d-hm-axis-cell span {
       position: absolute;
@@ -1478,6 +1544,7 @@
     </div>
     <div class="d-header-right">
       <button class="d-icon-btn" onclick="openAnalysis()" title="Dönem analizi">📊 Analiz</button>
+      <div id="themePickerWrap"></div>
       <a href="/" class="d-icon-btn" title="TaskFlow — Görev Listesi">
         <span class="nav-dot"></span> TaskFlow
       </a>
@@ -1954,6 +2021,7 @@
     </div>
   </div>
 
+  <script src="/static/theme.js"></script>
   <script>
     // ── State ────────────────────────────────────────────
     let currentDate    = new Date();
@@ -2205,7 +2273,7 @@
     // ── Categories ───────────────────────────────────────
     async function loadCategories() {
       const res = await fetch('/daily/categories');
-      allCategories = await res.json();
+      allCategories = (await res.json()).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
       renderCategoryPills();
       renderCategoryOptions();
     }
@@ -3146,6 +3214,17 @@
       return `rgba(${r},${g},${b},${a})`;
     }
 
+    // Current theme's accent — used by charts, which can't read CSS vars directly
+    function getAccentHex() {
+      return getComputedStyle(document.documentElement).getPropertyValue('--da').trim() || '#06b6d4';
+    }
+
+    // Faint neutral line/fill that stays visible against the current
+    // background (white-based in dark mode, dark-based in light modes)
+    function getVeilColor() {
+      return getComputedStyle(document.documentElement).getPropertyValue('--veil').trim() || 'rgba(255,255,255,.05)';
+    }
+
     function renderHeatmap(fromStr, toStr) {
       const days = [];
       const cur = new Date(fromStr + 'T00:00:00');
@@ -3183,11 +3262,10 @@
         html += `<div class="d-hm-row"><div class="d-hm-label" title="${escHtml(cat)}">${escHtml(cat)}</div><div class="d-hm-cells">`;
         days.forEach(d => {
           const e = counts[cat][d];
-          const bg = e
-            ? hexToRgba(color, 0.25 + 0.75 * (e.total / max))
-            : 'rgba(255,255,255,0.04)';
+          const styleAttr = e ? ` style="background:${hexToRgba(color, 0.25 + 0.75 * (e.total / max))}"` : '';
+          const cls = 'd-hm-cell' + (e ? '' : ' d-hm-cell-empty');
           const tip = `${fmtShort(d)} — ${cat}: ${e ? e.total : 0} görev${e ? ` (${e.done} tamamlandı)` : ''}`;
-          html += `<div class="d-hm-cell" style="background:${bg}" title="${escHtml(tip)}"></div>`;
+          html += `<div class="${cls}"${styleAttr} title="${escHtml(tip)}"></div>`;
         });
         html += `</div></div>`;
       });
@@ -3202,11 +3280,12 @@
       document.getElementById('heatmapGrid').innerHTML = html;
 
       // Legend: az → çok intensity scale
+      const legendAccent = getAccentHex();
       document.getElementById('heatmapLegend').innerHTML =
         max > 0
           ? `az ` +
             [0.25, 0.45, 0.65, 0.85, 1].map(a =>
-              `<div class="d-hm-cell" style="background:${hexToRgba('#06b6d4', a)}"></div>`
+              `<div class="d-hm-cell" style="background:${hexToRgba(legendAccent, a)}"></div>`
             ).join('') +
             ` çok (en yoğun: ${max} görev)`
           : '';
@@ -3412,6 +3491,9 @@
 
       destroyCharts();
 
+      const chartAccent = getAccentHex();
+      const chartGrid    = getVeilColor();
+
       // ── Line chart: completed + total ──
       chartLine = new Chart(document.getElementById('chartLine'), {
         type: 'line',
@@ -3421,8 +3503,8 @@
             {
               label: 'Tamamlanan',
               data: daily.map(d => d.completed),
-              borderColor: '#06b6d4',
-              backgroundColor: 'rgba(6,182,212,.12)',
+              borderColor: chartAccent,
+              backgroundColor: hexToRgba(chartAccent, .12),
               tension: .35,
               fill: true,
               pointRadius: daily.length > 30 ? 0 : 3,
@@ -3441,8 +3523,8 @@
         options: {
           plugins: { legend: { position: 'top' } },
           scales: {
-            x: { grid: { color: 'rgba(255,255,255,.05)' }, ticks: { maxRotation: 0 } },
-            y: { grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true, ticks: { precision: 0 } },
+            x: { grid: { color: chartGrid }, ticks: { maxRotation: 0 } },
+            y: { grid: { color: chartGrid }, beginAtZero: true, ticks: { precision: 0 } },
           },
         },
       });
@@ -3510,8 +3592,8 @@
             tooltip: barTooltip,
           },
           scales: {
-            x: { stacked: true, grid: { color: 'rgba(255,255,255,.05)' }, ticks: { maxRotation: 0 } },
-            y: { stacked: true, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true, ticks: { precision: 0 } },
+            x: { stacked: true, grid: { color: chartGrid }, ticks: { maxRotation: 0 } },
+            y: { stacked: true, grid: { color: chartGrid }, beginAtZero: true, ticks: { precision: 0 } },
           },
         },
       });
@@ -3897,8 +3979,18 @@
       }
       // Check every 60 seconds (browsers throttle background tabs anyway)
       setInterval(checkDueTimes, 60000);
+
+      if (window.AppTheme) AppTheme.mountThemePicker('themePickerWrap');
     }
     init();
+
+    // Chart.js bakes colors in at creation — refresh if the analysis
+    // modal happens to be open when the theme changes
+    document.addEventListener('themechange', () => {
+      if (document.getElementById('analysisOverlay').classList.contains('open')) {
+        runAnalysis();
+      }
+    });
   </script>
 </body>
 </html>

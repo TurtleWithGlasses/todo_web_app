@@ -5,7 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TaskFlow — Work Organizer</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✓</text></svg>">
+  <script>
+    (function () {
+      var t = localStorage.getItem('appTheme');
+      if (t && t !== 'classic') document.documentElement.setAttribute('data-theme', t);
+      var b = localStorage.getItem('appBgMode');
+      if (b && b !== 'dark') document.documentElement.setAttribute('data-bg', b);
+    })();
+  </script>
   <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/theme.css">
   <style>
     .month-nav-bar {
       display: flex;
@@ -15,9 +24,9 @@
       margin: 18px 0 8px;
     }
     .month-nav-btn {
-      background: var(--surface-2, #1e2130);
-      border: 1px solid var(--border, #2e3347);
-      color: var(--text, #e2e8f0);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
       border-radius: 8px;
       width: 36px;
       height: 36px;
@@ -28,12 +37,12 @@
       justify-content: center;
       transition: background 0.15s;
     }
-    .month-nav-btn:hover:not(:disabled) { background: var(--surface-3, #252a3d); }
+    .month-nav-btn:hover:not(:disabled) { background: var(--bg-card-hover); }
     .month-nav-btn:disabled { opacity: 0.3; cursor: default; }
     .month-label {
       font-size: 1.1rem;
       font-weight: 600;
-      color: var(--text, #e2e8f0);
+      color: var(--text-primary);
       min-width: 160px;
       text-align: center;
     }
@@ -48,6 +57,7 @@
         <p class="subtitle">Stay organized, stay productive</p>
       </div>
       <nav class="header-nav">
+        <div id="themePickerWrap"></div>
         <a href="/daily" class="nav-btn" title="Günlük İş Takibi">
           <span class="nav-dot"></span> Günlük Takip
         </a>
@@ -329,6 +339,10 @@
       updateMonthUI();
       await loadTasks();
     };
+  </script>
+  <script src="/static/theme.js"></script>
+  <script>
+    if (window.AppTheme) AppTheme.mountThemePicker('themePickerWrap');
   </script>
 </body>
 </html>

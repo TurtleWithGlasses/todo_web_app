@@ -1,0 +1,103 @@
+/* Shared theme-picker widget chrome — used by both TaskFlow and
+   Günlük İş Takibi. Relies only on CSS variables both pages define
+   identically (bg-*, text-*, border), so it needs no per-page tuning. */
+
+.theme-picker-wrap { position: relative; flex-shrink: 0; }
+
+.theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: .8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s ease;
+}
+.theme-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+.theme-btn-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: conic-gradient(from 180deg, #06b6d4, #a78bfa, #f43f5e, #f59e0b, #10b981, #3b82f6, #06b6d4);
+  box-shadow: 0 0 0 2px rgba(128,128,128,.25) inset;
+}
+
+.theme-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px;
+  min-width: 190px;
+  max-height: 70vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 40px rgba(0,0,0,.5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity .15s ease, transform .15s ease, visibility .15s;
+  z-index: 500;
+}
+.theme-popover.open { opacity: 1; visibility: visible; transform: translateY(0); }
+
+.theme-section-label {
+  font-size: .65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-muted);
+  padding: 6px 9px 4px;
+}
+.theme-section-label-2 { margin-top: 4px; border-top: 1px solid var(--border); padding-top: 10px; }
+
+.theme-swatch-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: .8rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background .15s ease, color .15s ease;
+}
+.theme-swatch-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+.theme-swatch-btn.active { background: var(--bg-card); color: var(--text-primary); border-color: var(--border); }
+
+.theme-swatch {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(128,128,128,.4) inset;
+}
+.theme-swatch-square { border-radius: 6px; }
+
+/* Fixed dark+light double ring so the selection indicator reads
+   clearly regardless of how dark or light the swatch itself is */
+.theme-swatch-btn.active .theme-swatch {
+  box-shadow: 0 0 0 2px #11151c, 0 0 0 4px #ffffff;
+}
