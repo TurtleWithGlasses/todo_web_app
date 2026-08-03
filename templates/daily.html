@@ -70,12 +70,25 @@
     }
 
     /* ── Background modes ────────────────────────────────
-       'dark' (no data-bg attr) keeps the palette above. */
+       'dark' (no data-bg attr) keeps the palette above.
+       Ordered light→lighter: mid-gray → light-gray → pale-gray → white. */
+    :root[data-bg="mid-gray"] {
+      --bg-primary: #c7cdd4; --bg-secondary: #d3d8de; --bg-card: #ffffff; --bg-card-hover: #f2f4f6;
+      --text-primary: #1a2030; --text-secondary: #47536a; --text-muted: #707c8c;
+      --border: rgba(15,23,42,.14); --border-hover: rgba(15,23,42,.22); --veil: rgba(15,23,42,.08);
+      --header-bg: rgba(211,216,222,0.85);
+    }
     :root[data-bg="light-gray"] {
       --bg-primary: #e5e9ee; --bg-secondary: #eef1f5; --bg-card: #ffffff; --bg-card-hover: #f7f9fb;
       --text-primary: #1c2333; --text-secondary: #4f5b6e; --text-muted: #7c8797;
       --border: rgba(15,23,42,.10); --border-hover: rgba(15,23,42,.18); --veil: rgba(15,23,42,.06);
       --header-bg: rgba(238,241,245,0.85);
+    }
+    :root[data-bg="pale-gray"] {
+      --bg-primary: #f0f2f4; --bg-secondary: #f8f9fa; --bg-card: #ffffff; --bg-card-hover: #eef0f2;
+      --text-primary: #1b2130; --text-secondary: #4c5768; --text-muted: #7d8798;
+      --border: rgba(15,23,42,.09); --border-hover: rgba(15,23,42,.17); --veil: rgba(15,23,42,.055);
+      --header-bg: rgba(248,249,250,0.85);
     }
     :root[data-bg="white"] {
       --bg-primary: #f6f7f9; --bg-secondary: #ffffff; --bg-card: #ffffff; --bg-card-hover: #f2f4f7;
@@ -2075,7 +2088,23 @@
 
     async function buildTrend() {
       const res  = await fetch(`/daily/weekly-stats?date=${isoDate(currentDate)}`);
-      const data = await res.json(); // [{date, total, completed}, ...]
+      let data = await res.json(); // [{date, total, completed, cats, tasks}, ...]
+
+      // Mirror the sidebar category filter so the trend reflects what's
+      // actually shown in the task list below
+      if (activeCat !== 'all') {
+        data = data.map(d => {
+          const tasks = (d.tasks || []).filter(t => t.category === activeCat);
+          const completed = tasks.filter(t => t.done).length;
+          return {
+            date: d.date,
+            total: tasks.length,
+            completed,
+            cats: completed > 0 ? { [activeCat]: completed } : {},
+            tasks,
+          };
+        });
+      }
 
       const barsEl   = document.getElementById('trendBars');
       const labelsEl = document.getElementById('trendLabels');
@@ -2411,9 +2440,11 @@
     }
 
     // ── Stats ring ───────────────────────────────────────
-    async function updateRing() {
-      const res = await fetch(`/daily/stats?date=${isoDate(currentDate)}`);
-      const { total, completed } = await res.json();
+    function updateRing() {
+      // Mirror the sidebar category filter, same as the trend bars
+      const tasks = activeCat === 'all' ? allTasks : allTasks.filter(t => t.category === activeCat);
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.status === 'tamamlandı').length;
 
       document.getElementById('ringCount').textContent   = `${completed}/${total}`;
       document.getElementById('ringStatus').textContent  =
@@ -2447,6 +2478,8 @@
       document.querySelectorAll('.d-cat-pill').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       renderTasks();
+      updateRing();
+      buildTrend();
     }
 
     function filterPriority(row) {

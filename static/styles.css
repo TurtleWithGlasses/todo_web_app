@@ -52,12 +52,25 @@
 
 /* ── Background modes ───────────────────────────────────────
    'dark' (no data-bg attr) keeps the palette above. These swap
-   backgrounds + text for a light canvas — muted, not stark white. */
+   backgrounds + text for a light canvas — muted, not stark white.
+   Ordered light→lighter: mid-gray → light-gray → pale-gray → white. */
+:root[data-bg="mid-gray"] {
+  --bg-primary: #c7cdd4; --bg-secondary: #d3d8de; --bg-card: #ffffff; --bg-card-hover: #f2f4f6;
+  --text-primary: #1a2030; --text-secondary: #47536a; --text-muted: #707c8c;
+  --border: rgba(15,23,42,.14);
+  --shadow: 0 4px 24px rgba(15,23,42,.16);
+}
 :root[data-bg="light-gray"] {
   --bg-primary: #e5e9ee; --bg-secondary: #eef1f5; --bg-card: #ffffff; --bg-card-hover: #f7f9fb;
   --text-primary: #1c2333; --text-secondary: #4f5b6e; --text-muted: #7c8797;
   --border: rgba(15,23,42,.10);
   --shadow: 0 4px 24px rgba(15,23,42,.12);
+}
+:root[data-bg="pale-gray"] {
+  --bg-primary: #f0f2f4; --bg-secondary: #f8f9fa; --bg-card: #ffffff; --bg-card-hover: #eef0f2;
+  --text-primary: #1b2130; --text-secondary: #4c5768; --text-muted: #7d8798;
+  --border: rgba(15,23,42,.09);
+  --shadow: 0 4px 24px rgba(15,23,42,.11);
 }
 :root[data-bg="white"] {
   --bg-primary: #f6f7f9; --bg-secondary: #ffffff; --bg-card: #ffffff; --bg-card-hover: #f2f4f7;

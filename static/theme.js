@@ -20,9 +20,11 @@
   ];
 
   const BG_MODES = [
-    { id: 'dark',       name: 'Koyu',     swatch: '#0f1419' },
-    { id: 'light-gray', name: 'Açık Gri', swatch: '#e5e9ee' },
-    { id: 'white',      name: 'Beyaz',    swatch: '#f6f7f9' },
+    { id: 'dark',       name: 'Koyu',      swatch: '#0f1419' },
+    { id: 'mid-gray',   name: 'Orta Gri',  swatch: '#c7cdd4' },
+    { id: 'light-gray', name: 'Açık Gri',  swatch: '#e5e9ee' },
+    { id: 'pale-gray',  name: 'Gri Beyaz', swatch: '#f0f2f4' },
+    { id: 'white',      name: 'Beyaz',     swatch: '#f6f7f9' },
   ];
 
   function getSavedTheme()  { return localStorage.getItem(THEME_KEY) || 'classic'; }
