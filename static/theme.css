@@ -8,13 +8,14 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 7px 13px;
+  padding: 8px 15px;
+  line-height: 1;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--text-secondary);
   font-family: 'Outfit', sans-serif;
-  font-size: .8rem;
+  font-size: .81rem;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;

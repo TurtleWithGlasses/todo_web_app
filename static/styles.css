@@ -126,14 +126,15 @@ header {
 .nav-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 16px;
+  gap: 7px;
+  padding: 8px 15px;
+  line-height: 1;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--text-secondary);
   font-family: 'Outfit', sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.81rem;
   font-weight: 500;
   text-decoration: none;
   transition: all 0.2s ease;
