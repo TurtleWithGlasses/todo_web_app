@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="currentColor" role="img" aria-label="Task app icon, single colour">
+  <path d="M140 268 L216 344 L372 188" fill="none" stroke="currentColor" stroke-width="46"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="140" cy="268" r="36"/>
+  <circle cx="372" cy="188" r="36"/>
+  <path d="M60 268 H140 M372 188 V92 M216 344 V430" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="60" cy="268" r="11"/>
+  <circle cx="372" cy="92" r="11"/>
+  <circle cx="216" cy="430" r="11"/>
+</svg>

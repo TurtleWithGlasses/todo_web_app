@@ -116,6 +116,21 @@ header {
   text-align: center;
 }
 
+.brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(67, 56, 202, .35);
+}
+
 .header-nav {
   display: flex;
   align-items: center;

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Task app icon: an abstract figure behind a checklist screen">
+  <defs>
+    <linearGradient id="tn-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111C3A"/>
+      <stop offset="1" stop-color="#0B1224"/>
+    </linearGradient>
+    <linearGradient id="tn-head" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#818CF8"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="tn-body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="116" fill="url(#tn-bg)"/>
+
+  <!-- faint grid: the desk as substrate -->
+  <g stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="4">
+    <path d="M0 160 H512 M0 288 H512 M128 0 V512 M384 0 V512"/>
+  </g>
+
+  <!-- orbital ring -->
+  <g transform="rotate(-22 256 152)">
+    <ellipse cx="256" cy="152" rx="128" ry="46" fill="none" stroke="#22D3EE" stroke-opacity="0.55" stroke-width="7"/>
+    <circle cx="384" cy="152" r="13" fill="#22D3EE"/>
+  </g>
+
+  <!-- figure -->
+  <circle cx="256" cy="152" r="52" fill="url(#tn-head)"/>
+  <path d="M142 276 C142 218 193 186 256 186 C319 186 370 218 370 276 Z" fill="url(#tn-body)"/>
+
+  <!-- screen -->
+  <rect x="86" y="256" width="340" height="180" rx="28" fill="#F8FAFC"/>
+
+  <!-- checklist rows -->
+  <rect x="116" y="286" width="38" height="38" rx="12" fill="#22C55E"/>
+  <path d="M126 305 L133 313 L146 297" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="172" y="298" width="222" height="16" rx="8" fill="#CBD5E1"/>
+
+  <rect x="116" y="348" width="38" height="38" rx="12" fill="none" stroke="#94A3B8" stroke-width="8"/>
+  <rect x="172" y="360" width="164" height="16" rx="8" fill="#E2E8F0"/>
+
+  <!-- base -->
+  <rect x="56" y="444" width="400" height="26" rx="13" fill="#334155"/>
+</svg>
