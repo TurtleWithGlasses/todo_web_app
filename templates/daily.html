@@ -1422,6 +1422,52 @@
       font-size: .9rem;
     }
 
+    /* ── Category ranking (doughnut companion list) ── */
+    .d-cat-rank-layout {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .d-cat-rank-layout canvas { flex: 1 1 40%; min-width: 0; max-width: 180px; }
+    .d-cat-rank-list {
+      flex: 1 1 60%;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 210px;
+      overflow-y: auto;
+    }
+    .d-cr-row { display: flex; align-items: center; gap: 8px; }
+    .d-cr-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .d-cr-name {
+      font-size: .78rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 0 0 auto;
+      max-width: 40%;
+    }
+    .d-cr-bar-track {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(120,130,145,.18);
+      overflow: hidden;
+      min-width: 20px;
+    }
+    .d-cr-bar-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+    .d-cr-count {
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      min-width: 22px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .d-cat-rank-empty { color: var(--text-muted); font-size: .8rem; }
+
     /* ── Category heatmap ── */
     .d-hm-wrap { overflow-x: auto; padding-bottom: 4px; }
     .d-hm-row  { display: flex; align-items: center; gap: 3px; margin-bottom: 3px; }
@@ -1887,7 +1933,10 @@
         </div>
         <div class="d-analysis-chart-box">
           <div class="d-analysis-chart-title">Kategoriye Göre Dağılım</div>
-          <canvas id="chartDoughnut" height="180"></canvas>
+          <div class="d-cat-rank-layout">
+            <canvas id="chartDoughnut" height="180"></canvas>
+            <div class="d-cat-rank-list" id="catRankList"></div>
+          </div>
         </div>
         <div class="d-analysis-chart-box wide">
           <div class="d-analysis-chart-title">Kategori Yoğunluk Haritası</div>
@@ -3670,7 +3719,7 @@
         },
         options: {
           plugins: {
-            legend: { position: 'right', labels: { boxWidth: 12, padding: 10 } },
+            legend: { display: false },
             tooltip: {
               callbacks: {
                 label: ctx => {
@@ -3683,6 +3732,25 @@
           cutout: '60%',
         },
       });
+
+      // ── Category ranking list — same data, sorted high to low,
+      // respects whatever filters (date range + category) produced it ──
+      const ranked = [...categories].sort((a, b) => b.total - a.total);
+      const maxCatTotal = Math.max(...ranked.map(c => c.total), 1);
+      const rankListEl = document.getElementById('catRankList');
+      rankListEl.innerHTML = ranked.length === 0
+        ? '<div class="d-cat-rank-empty">Görev yok</div>'
+        : ranked.map((c, i) => {
+            const color = catColors[categories.indexOf(c)];
+            const pct = Math.round((c.total / maxCatTotal) * 100);
+            return `
+              <div class="d-cr-row" title="${escHtml(c.name)}: ${c.total} görev (${c.completed} tamamlandı)">
+                <span class="d-cr-dot" style="background:${color}"></span>
+                <span class="d-cr-name">${escHtml(c.name)}</span>
+                <span class="d-cr-bar-track"><span class="d-cr-bar-fill" style="width:${pct}%;background:${color}"></span></span>
+                <span class="d-cr-count">${c.total}</span>
+              </div>`;
+          }).join('');
     }
 
     function destroyCharts() {
