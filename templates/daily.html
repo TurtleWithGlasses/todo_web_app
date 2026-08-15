@@ -1468,6 +1468,41 @@
     }
     .d-cat-rank-empty { color: var(--text-muted); font-size: .8rem; }
 
+    /* ── Finished-tasks category ranking (own list, hover for task names) ── */
+    .d-fr-list { display: flex; flex-direction: column; }
+    .d-fr-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 2px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    .d-fr-row:last-child { border-bottom: none; }
+    .d-fr-name {
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      flex-shrink: 0;
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .d-fr-line { flex: 1; height: 1px; background: var(--border); min-width: 20px; }
+    .d-fr-badge {
+      flex-shrink: 0;
+      min-width: 44px;
+      text-align: center;
+      padding: 6px 13px;
+      border-radius: 10px;
+      border: 1.5px solid;
+      font-size: .85rem;
+      font-weight: 700;
+    }
+    .d-fr-empty { color: var(--text-muted); font-size: .85rem; padding: 6px 0; }
+    .d-fr-row:hover .d-bar-tooltip { opacity: 1; visibility: visible; }
+
     /* ── Category heatmap ── */
     .d-hm-wrap { overflow-x: auto; padding-bottom: 4px; }
     .d-hm-row  { display: flex; align-items: center; gap: 3px; margin-bottom: 3px; }
@@ -1942,6 +1977,10 @@
           <div class="d-analysis-chart-title">Kategori Yoğunluk Haritası</div>
           <div class="d-hm-wrap" id="heatmapGrid"></div>
           <div class="d-hm-legend" id="heatmapLegend"></div>
+        </div>
+        <div class="d-analysis-chart-box wide">
+          <div class="d-analysis-chart-title">Tamamlanan Kategori Sıralaması</div>
+          <div class="d-fr-list" id="finishedRankList"></div>
         </div>
       </div>
 
@@ -3328,6 +3367,66 @@
       return getComputedStyle(document.documentElement).getPropertyValue('--veil').trim() || 'rgba(255,255,255,.05)';
     }
 
+    // Finished-tasks-per-category list, sorted high to low, using
+    // whatever the current filters (date range + category) produced.
+    // Hovering a row lists the actual finished task titles.
+    function renderFinishedRanking() {
+      const catColor = name =>
+        (allCategories.find(c => c.name === name) || {}).color || '#64748b';
+
+      const done = analysisTasks.filter(t => t.status === 'tamamlandı');
+      const byCat = new Map();
+      done.forEach(t => {
+        const cat = t.category || 'Diğer';
+        if (!byCat.has(cat)) byCat.set(cat, []);
+        byCat.get(cat).push(t);
+      });
+      const ranked = [...byCat.entries()].sort((a, b) => b[1].length - a[1].length);
+
+      const el = document.getElementById('finishedRankList');
+      if (ranked.length === 0) {
+        el.innerHTML = '<div class="d-fr-empty">Tamamlanmış görev yok</div>';
+        return;
+      }
+
+      el.innerHTML = ranked.map(([cat, tasks]) => {
+        const color = catColor(cat);
+        const grouped = groupTaskTitles(tasks);
+        const items = grouped.map(g =>
+          `<div class="d-bt-item"><span class="d-bt-t">✓ ${escHtml(g.title)}${g.count > 1 ? ` (${g.count})` : ''}</span></div>`
+        ).join('');
+        return `
+          <div class="d-fr-row">
+            <span class="d-fr-name" title="${escHtml(cat)}">${escHtml(cat)}</span>
+            <span class="d-fr-line"></span>
+            <span class="d-fr-badge" style="border-color:${color};color:${color};background:${hexToRgba(color, .12)}">${tasks.length}</span>
+            <div class="d-bar-tooltip">
+              <div class="d-bt-head">${escHtml(cat)}: ${tasks.length} tamamlandı</div>
+              ${items}
+            </div>
+          </div>`;
+      }).join('');
+
+      // Fixed-viewport tooltip placement — same approach as the trend
+      // bars, since this list can sit inside a scrolling modal that
+      // would otherwise clip an absolutely-positioned tooltip
+      el.querySelectorAll('.d-fr-row').forEach(row => {
+        row.addEventListener('mouseenter', () => {
+          const tip = row.querySelector('.d-bar-tooltip');
+          if (!tip) return;
+          const rowRect = row.getBoundingClientRect();
+          const tipRect = tip.getBoundingClientRect();
+          const pad = 8;
+          let left = rowRect.right - tipRect.width;
+          left = Math.max(pad, Math.min(left, window.innerWidth - tipRect.width - pad));
+          let top = rowRect.top - tipRect.height - 8;
+          if (top < pad) top = rowRect.bottom + 8;
+          tip.style.left = `${left}px`;
+          tip.style.top  = `${top}px`;
+        });
+      });
+    }
+
     function renderHeatmap(fromStr, toStr) {
       const days = [];
       const cur = new Date(fromStr + 'T00:00:00');
@@ -3570,6 +3669,7 @@
 
       renderAnalysisTable();
       renderHeatmap(from, to);
+      renderFinishedRanking();
 
       // Summary stats
       const rate    = Math.round((totalDone / totalTasks) * 100);
