@@ -1468,7 +1468,21 @@
        transform), which makes them siblings of .d-overlay. The overlay
        is z-index 1000, so the base .d-bar-tooltip's 999 would leave
        them buried behind the modal backdrop — they must sit above it. */
-    .d-fr-tooltip { z-index: 1100; }
+    .d-fr-tooltip {
+      z-index: 1100;
+      /* Show full task titles instead of truncating them: allow
+         wrapping, and let the box grow to fit (capped so it can never
+         run past the viewport edge). */
+      white-space: normal;
+      max-width: min(520px, calc(100vw - 24px));
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
+    }
+    .d-fr-tooltip .d-bt-t {
+      max-width: none;
+      overflow: visible;
+      text-overflow: clip;
+    }
 
     /* ── Category heatmap ── */
     .d-hm-wrap { overflow-x: auto; padding-bottom: 4px; }
@@ -3395,8 +3409,13 @@
           const pad = 8;
           let left = rowRect.right - tipRect.width;
           left = Math.max(pad, Math.min(left, window.innerWidth - tipRect.width - pad));
+          // Prefer above the row; drop below if there's no room. A tall
+          // box (many tasks, or wrapped long titles) is then clamped so
+          // it always stays fully inside the viewport.
           let top = rowRect.top - tipRect.height - 8;
           if (top < pad) top = rowRect.bottom + 8;
+          top = Math.min(top, window.innerHeight - tipRect.height - pad);
+          top = Math.max(pad, top);
           tip.style.left = `${left}px`;
           tip.style.top  = `${top}px`;
         });
