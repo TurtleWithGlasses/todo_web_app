@@ -9,7 +9,8 @@ from app.utils import (
     load_daily_tasks, add_daily_task, update_daily_task,
     delete_daily_task, set_daily_task_status, get_daily_stats,
     get_weekly_stats, get_analysis, move_daily_task, duplicate_daily_task,
-    create_repeat_tasks, delete_repeat_group, update_repeat_group, get_month_dots,
+    create_repeat_tasks, delete_repeat_group, delete_repeat_group_after,
+    update_repeat_group, get_month_dots,
     load_categories, add_category, update_category, delete_category,
     seed_categories, get_setting, set_setting,
 )
@@ -253,6 +254,11 @@ def daily_repeat(id):
 
 @main.route("/daily/repeat-group/<int:group_id>", methods=["DELETE"])
 def daily_delete_repeat_group(group_id):
+    # ?after=YYYY-MM-DD trims the series instead of deleting the whole group
+    after = request.args.get("after")
+    if after:
+        deleted = delete_repeat_group_after(group_id, after)
+        return jsonify({"success": True, "deleted": deleted})
     delete_repeat_group(group_id)
     return jsonify({"success": True})
 

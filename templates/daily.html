@@ -642,6 +642,7 @@
       font-size: .84rem; text-align: left;
       padding: 8px 12px; border-radius: 7px;
       cursor: pointer; transition: all .15s;
+      white-space: nowrap;
     }
     .d-rep-menu-item:hover            { background: var(--bg-card-hover); color: var(--text-primary); }
     .d-rep-menu-item.danger:hover     { background: rgba(239,68,68,.12); color: var(--danger); }
@@ -1468,6 +1469,9 @@
        transform), which makes them siblings of .d-overlay. The overlay
        is z-index 1000, so the base .d-bar-tooltip's 999 would leave
        them buried behind the modal backdrop — they must sit above it. */
+    /* Calendar day tooltips also live on <body> (the popup has its own
+       transform), so they must clear the popup's z-index of 998. */
+    .d-cal-tooltip { z-index: 1050; }
     .d-fr-tooltip {
       z-index: 1100;
       /* Show full task titles instead of truncating them: allow
@@ -2089,6 +2093,7 @@
   <!-- REPEAT GROUP MENU (floating) -->
   <div class="d-rep-menu" id="repMenu" style="display:none">
     <button class="d-rep-menu-item" onclick="(function(){ const id=repMenuTaskId; closeRepMenu(); deleteTask(id); })()">Bu tekrarı sil</button>
+    <button class="d-rep-menu-item danger" onclick="(function(){ const gid=repMenuGroupId, d=repMenuTaskDate; closeRepMenu(); deleteRepeatGroupAfter(gid, d); })()">Bu tarihten sonrakileri sil</button>
     <button class="d-rep-menu-item danger" onclick="(function(){ const gid=repMenuGroupId; closeRepMenu(); deleteRepeatGroup(gid); })()">Tüm tekrarları sil</button>
   </div>
 
@@ -2171,6 +2176,43 @@
       return [...map.values()].sort((a, b) => b.count - a.count);
     }
 
+    function catColorOf(name) {
+      return (allCategories.find(c => c.name === name) || {}).color || '#64748b';
+    }
+
+    // Shared body for the day-task tooltips: category headers with a
+    // colored dot and count, then each task marked ✓ (done) or ○
+    // (pending). Used by both the weekly trend bars and the calendar
+    // day cells so the two boxes read identically.
+    function buildTaskTooltipBody(tasks, maxItems = 8) {
+      const grouped = groupTaskTitles(tasks || []);
+      const byCat = new Map();
+      grouped.forEach(g => {
+        if (!byCat.has(g.category)) byCat.set(g.category, []);
+        byCat.get(g.category).push(g);
+      });
+      const catOrder = [...byCat.entries()].sort(
+        (a, b) => b[1].reduce((s, g) => s + g.count, 0) - a[1].reduce((s, g) => s + g.count, 0)
+      );
+      let shown = 0, html = '';
+      for (const [cat, items] of catOrder) {
+        if (shown >= maxItems) break;
+        const catTotal = items.reduce((s, g) => s + g.count, 0);
+        html += `<div class="d-bt-cat"><span class="d-bt-dot" style="background:${catColorOf(cat)}"></span>${escHtml(cat)}: ${catTotal}</div>`;
+        for (const g of items) {
+          if (shown >= maxItems) break;
+          const stateCls = g.done ? 'd-bt-done' : 'd-bt-pending';
+          const mark = g.done ? '<span class="d-bt-check">✓</span>' : '<span class="d-bt-check">○</span>';
+          html += `<div class="d-bt-item d-bt-sub ${stateCls}">${mark}<span class="d-bt-t">${escHtml(g.title)}${g.count > 1 ? ` (${g.count})` : ''}</span></div>`;
+          shown++;
+        }
+      }
+      if (grouped.length > shown) {
+        html += `<div class="d-bt-more">+${grouped.length - shown} görev daha</div>`;
+      }
+      return html;
+    }
+
     async function buildTrend() {
       const res  = await fetch(`/daily/weekly-stats?date=${isoDate(currentDate)}`);
       let data = await res.json(); // [{date, total, completed, cats, tasks}, ...]
@@ -2218,34 +2260,9 @@
             `<div class="d-bar-seg" style="flex:${count};background:linear-gradient(to top, ${catColor(name)}, ${hexToRgba(catColor(name), .55)})"></div>`
           ).join('');
 
-        // Group titles under category headers, biggest categories first
-        const grouped = groupTaskTitles(d.tasks || []);
-        const byCat = new Map();
-        grouped.forEach(g => {
-          if (!byCat.has(g.category)) byCat.set(g.category, []);
-          byCat.get(g.category).push(g);
-        });
-        const catOrder = [...byCat.entries()]
-          .sort((a, b) => b[1].reduce((s, g) => s + g.count, 0) - a[1].reduce((s, g) => s + g.count, 0));
-        const MAX_ITEMS = 8;
-        let shown = 0, taskItems = '';
-        for (const [cat, items] of catOrder) {
-          if (shown >= MAX_ITEMS) break;
-          const catTotal = items.reduce((s, g) => s + g.count, 0);
-          taskItems += `<div class="d-bt-cat"><span class="d-bt-dot" style="background:${catColor(cat)}"></span>${escHtml(cat)}: ${catTotal}</div>`;
-          for (const g of items) {
-            if (shown >= MAX_ITEMS) break;
-            const stateCls = g.done ? 'd-bt-done' : 'd-bt-pending';
-            const mark = g.done ? '<span class="d-bt-check">✓</span>' : '<span class="d-bt-check">○</span>';
-            taskItems += `<div class="d-bt-item d-bt-sub ${stateCls}">${mark}<span class="d-bt-t">${escHtml(g.title)}${g.count > 1 ? ` (${g.count})` : ''}</span></div>`;
-            shown++;
-          }
-        }
-        const moreLine = grouped.length > shown
-          ? `<div class="d-bt-more">+${grouped.length - shown} görev daha</div>` : '';
         const tooltipText = isEmpty
           ? 'Görev yok'
-          : `<div class="d-bt-head">${d.completed}/${d.total} tamamlandı</div>${taskItems}${moreLine}`;
+          : `<div class="d-bt-head">${d.completed}/${d.total} tamamlandı</div>${buildTaskTooltipBody(d.tasks || [])}`;
 
         const cls = ['d-bar-wrap',
           isToday || isCurrent ? 'today' : '',
@@ -2743,11 +2760,14 @@
     let calendarOpen = false;
     let calYear      = currentDate.getFullYear();
     let calMonth     = currentDate.getMonth();
-    let calendarDots = {}; // { "2026-04-15": ["#color1", ...] }
+    let calendarDots  = {}; // { "2026-04-15": ["#color1", ...] }
+    let calendarTasks = {}; // { "2026-04-15": [{title, category, done, time}, ...] }
 
     async function loadCalendarDots(year, month) {
       const res = await fetch(`/daily/month-dots?year=${year}&month=${month}`);
-      calendarDots = await res.json();
+      const data = await res.json();
+      calendarDots  = data.dots  || {};
+      calendarTasks = data.tasks || {};
     }
 
     const CAL_MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
@@ -2769,6 +2789,7 @@
     function closeCalendar() {
       calendarOpen = false;
       document.getElementById('calendarPopup').classList.remove('open');
+      document.querySelectorAll('.d-cal-tooltip').forEach(t => t.remove());
     }
 
     async function calPrevMonth() {
@@ -2828,6 +2849,9 @@
       grid.innerHTML = '';
       headers.forEach(h => grid.appendChild(h));
 
+      // Drop tooltips left over from the previous render
+      document.querySelectorAll('.d-cal-tooltip').forEach(t => t.remove());
+
       days.forEach(({ day, iso, other }) => {
         const div = document.createElement('div');
         div.className = ['d-cal-day',
@@ -2843,6 +2867,41 @@
 
         div.innerHTML = `<span>${day}</span>${dotsHtml}`;
         div.onclick = () => selectCalDay(iso);
+
+        // Hover a day with tasks to see them, same box as the trend bars.
+        // The calendar popup has its own CSS transform, which would break
+        // position:fixed inside it — so the tooltip goes on <body>.
+        const dayTasks = other ? [] : (calendarTasks[iso] || []);
+        if (dayTasks.length) {
+          const doneCount = dayTasks.filter(t => t.done).length;
+          const tip = document.createElement('div');
+          tip.className = 'd-bar-tooltip d-cal-tooltip';
+          tip.innerHTML =
+            `<div class="d-bt-head">${doneCount}/${dayTasks.length} tamamlandı</div>` +
+            buildTaskTooltipBody(dayTasks);
+          document.body.appendChild(tip);
+
+          div.addEventListener('mouseenter', () => {
+            tip.style.opacity = '1';
+            tip.style.visibility = 'visible';
+            const r  = div.getBoundingClientRect();
+            const tr = tip.getBoundingClientRect();
+            const pad = 8;
+            let left = r.left + r.width / 2 - tr.width / 2;
+            left = Math.max(pad, Math.min(left, window.innerWidth - tr.width - pad));
+            let top = r.top - tr.height - 8;
+            if (top < pad) top = r.bottom + 8;
+            top = Math.min(top, window.innerHeight - tr.height - pad);
+            top = Math.max(pad, top);
+            tip.style.left = `${left}px`;
+            tip.style.top  = `${top}px`;
+          });
+          div.addEventListener('mouseleave', () => {
+            tip.style.opacity = '0';
+            tip.style.visibility = 'hidden';
+          });
+        }
+
         grid.appendChild(div);
       });
     }
@@ -4024,29 +4083,59 @@
     }
 
     // ── Repeat group menu ─────────────────────────────────
-    let repMenuTaskId  = null;
-    let repMenuGroupId = null;
+    let repMenuTaskId   = null;
+    let repMenuGroupId  = null;
+    let repMenuTaskDate = null;
 
     function openRepMenu(e, taskId, groupId) {
       e.stopPropagation();
       repMenuTaskId  = taskId;
       repMenuGroupId = groupId;
+      const task = allTasks.find(t => t.id === taskId);
+      repMenuTaskDate = task ? task.date : isoDate(currentDate);
       const menu = document.getElementById('repMenu');
       const btn  = e.currentTarget;
       const rect = btn.getBoundingClientRect();
       menu.style.top  = (rect.bottom + 6 + window.scrollY) + 'px';
-      menu.style.left = Math.max(8, rect.left - 100 + window.scrollX) + 'px';
+      // Show first so the menu can be measured, then keep it on screen —
+      // it's wider now that it carries a third, longer label.
       menu.style.display = 'block';
+      const viewW = document.documentElement.clientWidth;
+      let left = rect.left - 100;
+      left = Math.min(left, viewW - menu.offsetWidth - 8);
+      left = Math.max(8, left);
+      menu.style.left = (left + window.scrollX) + 'px';
     }
 
     function closeRepMenu() {
       document.getElementById('repMenu').style.display = 'none';
-      repMenuTaskId = repMenuGroupId = null;
+      repMenuTaskId = repMenuGroupId = repMenuTaskDate = null;
     }
 
     async function deleteRepeatGroup(groupId) {
       await fetch(`/daily/repeat-group/${groupId}`, { method: 'DELETE' });
       loadTasks();
+    }
+
+    // Trim a repeat series: removes every instance dated after this one,
+    // leaving this task and any earlier ones untouched. Confirmed first
+    // since a long series can span years.
+    async function deleteRepeatGroupAfter(groupId, afterDate) {
+      if (!groupId || !afterDate) return;
+      const label = new Date(afterDate + 'T00:00:00')
+        .toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (!confirm(`${label} tarihinden SONRAKİ tüm tekrarlar silinecek.\nBu tarihteki görev ve öncesi kalacak.\n\nDevam edilsin mi?`)) return;
+      const res = await fetch(
+        `/daily/repeat-group/${groupId}?after=${encodeURIComponent(afterDate)}`,
+        { method: 'DELETE' }
+      );
+      const data = await res.json().catch(() => ({}));
+      await loadTasks();
+      if (typeof data.deleted === 'number') {
+        showTimerToast(data.deleted > 0
+          ? `${data.deleted} tekrar silindi`
+          : 'Silinecek ileri tarihli tekrar yok');
+      }
     }
 
     document.addEventListener('click', e => {

@@ -269,7 +269,29 @@ def delete_repeat_group(group_id: int):
         db.query(DailyTask).filter(DailyTask.repeat_group_id == group_id).delete()
         db.commit()
 
+def delete_repeat_group_after(group_id: int, after_date: str):
+    """Delete a repeat group's tasks dated strictly after after_date.
+
+    Used to cut a long-running series short without touching the task on
+    the given day or any earlier ones. Dates are stored as ISO strings
+    (YYYY-MM-DD), so a plain string comparison orders them correctly.
+    Returns how many rows were removed.
+    """
+    with SessionLocal() as db:
+        deleted = db.query(DailyTask).filter(
+            DailyTask.repeat_group_id == group_id,
+            DailyTask.date > after_date,
+        ).delete(synchronize_session=False)
+        db.commit()
+        return deleted
+
 def get_month_dots(year: int, month: int):
+    """Per-day calendar data for a month.
+
+    Returns {"dots": {date: [colors]}, "tasks": {date: [task, ...]}} —
+    the dots drive the calendar markers, the task lists feed the
+    hover tooltip on each day cell.
+    """
     import calendar as cal_mod
     last_day  = cal_mod.monthrange(year, month)[1]
     from_date = f"{year}-{str(month).zfill(2)}-01"
@@ -283,12 +305,25 @@ def get_month_dots(year: int, month: int):
     from collections import defaultdict
     dots  = defaultdict(list)
     seen  = defaultdict(set)
+    day_tasks = defaultdict(list)
     for t in tasks:
         color = cat_colors.get(t.category, '#64748b') if t.category else '#64748b'
         if color not in seen[t.date]:
             dots[t.date].append(color)
             seen[t.date].add(color)
-    return dict(dots)
+        day_tasks[t.date].append({
+            "title":    t.title,
+            "category": t.category or "Diğer",
+            "done":     t.status == "tamamlandı",
+            "time":     t.time or "",
+        })
+    return {
+        "dots": dict(dots),
+        "tasks": {
+            d: sorted(items, key=lambda x: x["time"] or "99:99")
+            for d, items in day_tasks.items()
+        },
+    }
 
 def set_daily_task_status(task_id: int, status: str):
     with SessionLocal() as db:
