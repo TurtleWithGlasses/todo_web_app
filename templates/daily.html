@@ -1308,6 +1308,149 @@
     }
     .d-catmgr-add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--da-glow); }
 
+    /* ── WEEK VIEW MODAL ─────────────────────────────────── */
+    .d-week-modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px;
+      width: 1180px;
+      max-width: 96vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px) scale(.97);
+      transition: transform .25s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .d-overlay.open .d-week-modal { transform: translateY(0) scale(1); }
+
+    .d-wk-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .d-wk-range {
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      min-width: 230px;
+      text-align: center;
+    }
+    .d-wk-nav { display: flex; align-items: center; gap: 8px; }
+    .d-wk-arrow {
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      transition: all .15s;
+    }
+    .d-wk-arrow:hover { color: var(--da); border-color: var(--da); }
+    .d-wk-today-btn {
+      padding: 7px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text-secondary);
+      font-family: 'Outfit', sans-serif;
+      font-size: .8rem;
+      font-weight: 500;
+      transition: all .15s;
+    }
+    .d-wk-today-btn:hover { color: var(--da); border-color: var(--da); }
+    .d-wk-summary { font-size: .8rem; color: var(--text-muted); }
+    .d-wk-summary strong { color: var(--text-primary); font-weight: 700; }
+
+    /* 7 day columns; scrolls sideways rather than crushing them */
+    .d-wk-scroll { overflow-x: auto; padding: 4px 0 8px; }
+    .d-wk-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(148px, 1fr));
+      gap: 10px;
+      align-items: start;
+    }
+    .d-wk-col {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      min-height: 130px;
+    }
+    .d-wk-col.today {
+      border-color: var(--da);
+      box-shadow: 0 0 0 3px var(--da-glow);
+    }
+    .d-wk-col.weekend { background: var(--bg-secondary); }
+
+    .d-wk-colhead {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .d-wk-colhead:hover .d-wk-daynum { color: var(--da); }
+    .d-wk-dowwrap { display: flex; align-items: baseline; gap: 7px; }
+    .d-wk-dow {
+      font-size: .68rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .07em;
+      color: var(--text-muted);
+    }
+    .d-wk-daynum { font-size: 1.02rem; font-weight: 700; color: var(--text-primary); transition: color .15s; }
+    .d-wk-col.today .d-wk-daynum,
+    .d-wk-col.today .d-wk-dow { color: var(--da); }
+    .d-wk-count {
+      font-size: .66rem; font-weight: 600;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .d-wk-count.all-done { color: var(--success); }
+
+    .d-wk-task {
+      border-left: 3px solid var(--wk-cat, #64748b);
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .d-wk-col.weekend .d-wk-task { background: var(--bg-card); }
+    .d-wk-trow { display: flex; align-items: baseline; gap: 6px; }
+    .d-wk-time {
+      font-size: .67rem;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+    .d-wk-title {
+      font-size: .76rem;
+      line-height: 1.35;
+      color: var(--text-primary);
+      overflow-wrap: anywhere;
+    }
+    .d-wk-task.done .d-wk-title { text-decoration: line-through; color: var(--text-muted); }
+    .d-wk-cat {
+      font-size: .64rem;
+      font-weight: 600;
+      color: var(--wk-cat, #64748b);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .d-wk-none { font-size: .72rem; color: var(--text-muted); padding: 6px 2px; }
+
     /* ── ANALYSIS MODAL ──────────────────────────────────── */
     .d-analysis-modal {
       background: var(--bg-secondary);
@@ -1641,6 +1784,7 @@
       <h1>Günlük İş Takibi</h1>
     </div>
     <div class="d-header-right">
+      <button class="d-icon-btn" onclick="openWeekView()" title="Haftalık takvim">&#128197; Hafta</button>
       <button class="d-icon-btn" onclick="openAnalysis()" title="Dönem analizi">📊 Analiz</button>
       <div id="themePickerWrap"></div>
       <a href="/" class="d-icon-btn" title="TaskFlow — Görev Listesi">
@@ -1882,6 +2026,31 @@
       <div class="d-modal-foot">
         <button class="d-btn-cancel" onclick="closeModal()">İptal</button>
         <button class="d-btn-save" id="modalSubmitBtn" onclick="submitTask()">Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEEK VIEW MODAL -->
+  <div class="d-overlay" id="weekOverlay" onclick="handleWeekOverlayClick(event)">
+    <div class="d-week-modal">
+      <h2>Haftalık Takvim</h2>
+
+      <div class="d-wk-top">
+        <div class="d-wk-nav">
+          <button class="d-wk-arrow" onclick="weekPrev()" title="Önceki hafta">&#8249;</button>
+          <span class="d-wk-range" id="weekRange"></span>
+          <button class="d-wk-arrow" onclick="weekNext()" title="Sonraki hafta">&#8250;</button>
+          <button class="d-wk-today-btn" onclick="weekToday()">Bu Hafta</button>
+        </div>
+        <div class="d-wk-summary" id="weekSummary"></div>
+      </div>
+
+      <div class="d-wk-scroll">
+        <div class="d-wk-grid" id="weekGrid"></div>
+      </div>
+
+      <div class="d-modal-foot" style="margin-top:18px">
+        <button class="d-btn-cancel" onclick="closeWeekView()">Kapat</button>
       </div>
     </div>
   </div>
@@ -2747,7 +2916,7 @@
 
     // ── Keyboard shortcuts ────────────────────────────────
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); }
+      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeWeekView(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); }
       if (e.key === 'Enter' && document.getElementById('overlay').classList.contains('open')) {
         const tag = document.activeElement.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -3266,6 +3435,123 @@
     Chart.defaults.color      = CHART_DEFAULTS.color;
     Chart.defaults.font.family = CHART_DEFAULTS.font.family;
     Chart.defaults.font.size   = CHART_DEFAULTS.font.size;
+
+    // ── Week view ─────────────────────────────────────────
+    let weekStart = null; // Monday of the week on screen
+
+    function mondayOf(d) {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); // shift so Mon = 0
+      return x;
+    }
+
+    function openWeekView() {
+      weekStart = mondayOf(currentDate);
+      document.getElementById('weekOverlay').classList.add('open');
+      loadWeekView();
+    }
+
+    function closeWeekView() {
+      document.getElementById('weekOverlay').classList.remove('open');
+    }
+
+    function handleWeekOverlayClick(e) {
+      if (e.target === document.getElementById('weekOverlay')) closeWeekView();
+    }
+
+    function weekPrev()  { weekStart.setDate(weekStart.getDate() - 7); loadWeekView(); }
+    function weekNext()  { weekStart.setDate(weekStart.getDate() + 7); loadWeekView(); }
+    function weekToday() { weekStart = mondayOf(new Date()); loadWeekView(); }
+
+    async function loadWeekView() {
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart);
+        d.setDate(d.getDate() + i);
+        days.push(d);
+      }
+      // Reuse the analysis endpoint — it already returns every task in a
+      // date range with all fields, sorted by date then time.
+      const res  = await fetch(`/daily/analysis?from=${isoDate(days[0])}&to=${isoDate(days[6])}`);
+      const data = await res.json();
+      renderWeekGrid(days, data.tasks || []);
+    }
+
+    function renderWeekGrid(days, tasks) {
+      const byDate = new Map();
+      tasks.forEach(t => {
+        if (!byDate.has(t.date)) byDate.set(t.date, []);
+        byDate.get(t.date).push(t);
+      });
+
+      // Range label: drop repeated month/year, e.g. "17 – 23 Ağustos 2026"
+      const f = days[0], l = days[6];
+      const fmt = (d, o) => d.toLocaleDateString('tr-TR', o);
+      const endStr = fmt(l, { day: 'numeric', month: 'long', year: 'numeric' });
+      let startStr;
+      if (f.getFullYear() !== l.getFullYear())  startStr = fmt(f, { day: 'numeric', month: 'long', year: 'numeric' });
+      else if (f.getMonth() !== l.getMonth())   startStr = fmt(f, { day: 'numeric', month: 'long' });
+      else                                      startStr = String(f.getDate());
+      document.getElementById('weekRange').textContent = `${startStr} – ${endStr}`;
+
+      const total = tasks.length;
+      const done  = tasks.filter(t => t.status === 'tamamlandı').length;
+      document.getElementById('weekSummary').innerHTML = total
+        ? `Bu hafta <strong>${done}/${total}</strong> görev tamamlandı`
+        : 'Bu hafta görev yok';
+
+      const todayIso = isoDate(new Date());
+      const DOW = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+
+      document.getElementById('weekGrid').innerHTML = days.map((d, i) => {
+        const iso      = isoDate(d);
+        const dayTasks = byDate.get(iso) || [];
+        const dDone    = dayTasks.filter(t => t.status === 'tamamlandı').length;
+
+        const cls = ['d-wk-col',
+          iso === todayIso ? 'today' : '',
+          i >= 5 ? 'weekend' : '',
+        ].filter(Boolean).join(' ');
+
+        const allDone  = dayTasks.length > 0 && dDone === dayTasks.length;
+        const countTxt = dayTasks.length ? `${dDone}/${dayTasks.length}` : '';
+
+        const items = dayTasks.length
+          ? dayTasks.map(t => {
+              const color  = catColorOf(t.category || 'Diğer');
+              const isDone = t.status === 'tamamlandı';
+              return `
+                <div class="d-wk-task${isDone ? ' done' : ''}" style="--wk-cat:${color}" title="${escHtml(t.title)}">
+                  <div class="d-wk-trow">
+                    ${t.time ? `<span class="d-wk-time">${escHtml(t.time)}</span>` : ''}
+                    <span class="d-wk-title">${escHtml(t.title)}</span>
+                  </div>
+                  ${t.category ? `<span class="d-wk-cat">${escHtml(t.category)}</span>` : ''}
+                </div>`;
+            }).join('')
+          : '<div class="d-wk-none">—</div>';
+
+        return `
+          <div class="${cls}">
+            <div class="d-wk-colhead" onclick="goToDayFromWeek('${iso}')" title="Bu güne git">
+              <span class="d-wk-dowwrap">
+                <span class="d-wk-dow">${DOW[i]}</span>
+                <span class="d-wk-daynum">${d.getDate()}</span>
+              </span>
+              <span class="d-wk-count${allDone ? ' all-done' : ''}">${countTxt}</span>
+            </div>
+            ${items}
+          </div>`;
+      }).join('');
+    }
+
+    function goToDayFromWeek(iso) {
+      currentDate = new Date(iso + 'T00:00:00');
+      updateDateLabel();
+      closeWeekView();
+      loadTasks();
+    }
 
     function openAnalysis() {
       const today = isoDate(new Date());
