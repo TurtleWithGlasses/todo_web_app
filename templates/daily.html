@@ -1395,6 +1395,30 @@
     }
     .d-srch-ocat { font-size: .72rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .d-srch-hint { color: var(--text-muted); font-size: .84rem; padding: 24px 6px; text-align: center; }
+    .d-split-row {
+      margin-top: 12px;
+      padding: 11px 13px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+    }
+    .d-split-info { font-size: .74rem; color: var(--text-muted); line-height: 1.5; }
+    .d-split-info strong { color: var(--text-primary); }
+    .d-split-btns { display: flex; gap: 8px; margin-top: 9px; flex-wrap: wrap; }
+    .d-split-btn {
+      flex: 1;
+      min-width: 140px;
+      padding: 7px 10px;
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-family: 'Outfit', sans-serif;
+      font-size: .75rem;
+      transition: all .15s;
+    }
+    .d-split-btn:hover { color: var(--da); border-color: var(--da); }
+
     .d-srch-merge { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
     .d-srch-mergebtn {
       background: transparent;
@@ -2119,6 +2143,17 @@
           <input type="checkbox" id="editAllRepeatsCheck" />
           🔁 Tüm tekrarları da güncelle
         </label>
+      </div>
+
+      <div class="d-split-row" id="splitRow" style="display:none">
+        <div class="d-split-info">
+          Bu görevin <strong id="splitCount">0</strong> kaydı var — adı değiştirip
+          <em>Kaydet</em> dersen hepsi yeniden adlandırılır.
+        </div>
+        <div class="d-split-btns">
+          <button type="button" class="d-split-btn" onclick="doSplit(false)">Sadece bu günü ayır</button>
+          <button type="button" class="d-split-btn" onclick="doSplit(true)">Bu gün ve sonrasını ayır</button>
+        </div>
       </div>
 
       <div class="d-new-repeat-row" id="newRepeatRow">
@@ -2918,8 +2953,20 @@
       document.getElementById('newRepeatRow').style.display  = 'none';
       document.getElementById('editAllRow').style.display    = editingGroupId ? '' : 'none';
       document.getElementById('editAllRepeatsCheck').checked = false;
+      document.getElementById('splitRow').style.display = 'none';
       document.getElementById('overlay').classList.add('open');
       document.getElementById('fTitle').focus();
+
+      // Splitting only makes sense when this task has other occurrences.
+      fetch(`/daily/task-count?title=${encodeURIComponent(task.title)}`)
+        .then(r => r.json())
+        .then(({ count }) => {
+          if (editingTaskId === id && count > 1) {
+            document.getElementById('splitCount').textContent = count;
+            document.getElementById('splitRow').style.display = '';
+          }
+        })
+        .catch(() => {});
     }
 
     function closeModal() {
@@ -2931,6 +2978,7 @@
       document.getElementById('fPriority').value = 'orta';
       document.getElementById('editAllRow').style.display    = 'none';
       document.getElementById('editAllRepeatsCheck').checked = false;
+      document.getElementById('splitRow').style.display      = 'none';
     }
 
 
@@ -3570,6 +3618,38 @@
     Chart.defaults.color      = CHART_DEFAULTS.color;
     Chart.defaults.font.family = CHART_DEFAULTS.font.family;
     Chart.defaults.font.size   = CHART_DEFAULTS.font.size;
+
+    // Split: peel this occurrence (optionally plus later ones) off under a
+    // new name. Needed as its own action because renaming now always
+    // cascades to the whole task.
+    async function doSplit(includeLater) {
+      if (editingTaskId === null) return;
+      const orig = allTasks.find(t => t.id === editingTaskId);
+      const newTitle = document.getElementById('fTitle').value.trim();
+      if (!orig || !newTitle) { document.getElementById('fTitle').focus(); return; }
+      if (newTitle === orig.title) {
+        alert('Ayırmak için önce başlığa yeni bir ad yaz.');
+        document.getElementById('fTitle').focus();
+        return;
+      }
+
+      const scope = includeLater
+        ? `${fmtLongDate(orig.date)} ve sonrasindaki kayitlar`
+        : `sadece ${fmtLongDate(orig.date)} kaydi`;
+      if (!confirm(`${scope} "${newTitle}" adiyla ayri bir gorev olacak.\n\nDevam edilsin mi?`)) return;
+
+      const res = await fetch(`/daily/task-split/${editingTaskId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_title: newTitle, include_later: includeLater }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.success) { alert('Ayırma başarısız.'); return; }
+
+      closeModal();
+      await loadTasks();
+      showTimerToast(`${data.split} kayıt ayrıldı`);
+    }
 
     // ── Task search (entities grouped by normalized title) ──
     let srchTimer    = null;

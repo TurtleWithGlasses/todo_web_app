@@ -415,6 +415,42 @@ def rename_task_entity(old_title: str, new_title: str) -> int:
         db.commit()
         return len(rows)
 
+def split_task_entity(task_id: int, new_title: str, include_later: bool = False) -> int:
+    """Peel occurrences off a task so they become a separate task.
+
+    Renaming re-identifies the whole task, so splitting needs its own
+    operation: it retitles only this occurrence, or this one plus every
+    later occurrence sharing the same identity, leaving earlier ones under
+    the original name.
+
+    Peeled rows are also detached from the old repeat group - otherwise
+    that group would span two different titles and "delete all repeats"
+    would reach across both tasks. Several rows moving together get a
+    fresh group of their own; a lone row becomes standalone.
+    """
+    new_title = (new_title or "").strip()
+    if not new_title:
+        return 0
+    with SessionLocal() as db:
+        src = db.get(DailyTask, task_id)
+        if not src:
+            return 0
+        key = normalize_title(src.title)
+        if include_later:
+            rows = [t for t in db.query(DailyTask).all()
+                    if normalize_title(t.title) == key and t.date >= src.date]
+        else:
+            rows = [src]
+
+        new_gid = None
+        if len(rows) > 1:
+            new_gid = (db.query(func.max(DailyTask.repeat_group_id)).scalar() or 0) + 1
+        for t in rows:
+            t.title = new_title
+            t.repeat_group_id = new_gid
+        db.commit()
+        return len(rows)
+
 def get_task_history(key: str):
     """Every occurrence of one task entity, newest first."""
     items = [t for t in _entity_rows() if normalize_title(t.title) == key]

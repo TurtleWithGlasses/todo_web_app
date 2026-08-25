@@ -15,6 +15,7 @@ from app.utils import (
     seed_categories, get_setting, set_setting,
     search_task_entities, get_task_history,
     get_daily_task, count_task_occurrences, rename_task_entity,
+    split_task_entity,
 )
 import json
 
@@ -289,6 +290,16 @@ def daily_task_history():
     if not key:
         return jsonify({"error": "key required"}), 400
     return jsonify(get_task_history(key))
+
+@main.route("/daily/task-split/<int:id>", methods=["POST"])
+def daily_task_split(id):
+    """Peel this occurrence (optionally plus later ones) into its own task."""
+    data = request.get_json() or {}
+    new_title = (data.get("new_title") or "").strip()
+    if not new_title:
+        return jsonify({"success": False, "error": "new_title required"}), 400
+    n = split_task_entity(id, new_title, bool(data.get("include_later")))
+    return jsonify({"success": True, "split": n})
 
 @main.route("/daily/task-count", methods=["GET"])
 def daily_task_count():
