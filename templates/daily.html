@@ -1419,6 +1419,38 @@
     }
     .d-split-btn:hover { color: var(--da); border-color: var(--da); }
 
+    .d-srch-lineage { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .d-lin-label {
+      font-size: .68rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--text-muted); margin-bottom: 7px;
+    }
+    .d-lin-chain { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .d-lin-node {
+      font-size: .75rem; padding: 4px 10px; border-radius: 999px;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      color: var(--text-secondary); cursor: pointer; transition: all .15s;
+    }
+    .d-lin-node:hover { color: var(--da); border-color: var(--da); }
+    .d-lin-node.current { color: var(--text-primary); font-weight: 600; cursor: default; }
+    .d-lin-node.current:hover { border-color: var(--border); color: var(--text-primary); }
+    .d-lin-arrow { color: var(--text-muted); font-size: .8rem; }
+    .d-lin-kids { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+    .d-lin-kid {
+      font-size: .75rem; color: var(--text-secondary); cursor: pointer;
+      padding: 5px 9px; border-radius: 8px; transition: background .15s;
+      display: flex; justify-content: space-between; gap: 10px;
+    }
+    .d-lin-kid:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .d-lin-kid span:last-child { color: var(--text-muted); font-size: .7rem; }
+    .d-lin-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+    .d-lin-actions select { flex: 1; min-width: 0; }
+    .d-lin-clear {
+      background: transparent; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-muted); font-family: 'Outfit', sans-serif; font-size: .74rem;
+      padding: 7px 11px; transition: all .15s;
+    }
+    .d-lin-clear:hover { color: var(--danger); border-color: var(--danger); }
+
     .d-srch-merge { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
     .d-srch-mergebtn {
       background: transparent;
@@ -3739,6 +3771,7 @@
           <strong>${meta.completed || 0}</strong> tamamlandı${range ? ' · ' + range : ''}
         </div>
         ${rows || '<div class="d-srch-hint">Kayıt yok.</div>'}
+        <div class="d-srch-lineage" id="srchLineage"></div>
         <div class="d-srch-merge">
           <button class="d-srch-mergebtn" onclick="toggleMergePicker()">
             &#128279; Başka bir görevle birleştir
@@ -3751,6 +3784,85 @@
             Bu görevin tüm kayıtları seçilen görevin adını alır ve iki görev tek görev olur.
           </div>
         </div>`;
+
+      renderLineage(key, meta.title || '');
+    }
+
+    // Revision lineage: which task this one revises, and which tasks
+    // revise it. Stored per task rather than derived, since a link
+    // between two titles cannot be inferred from the rows.
+    async function renderLineage(key, title) {
+      const el = document.getElementById('srchLineage');
+      if (!el) return;
+      const res = await fetch(`/daily/task-lineage?key=${encodeURIComponent(key)}`);
+      const lin = await res.json();
+
+      // Ancestors come back nearest-first; show the chain root -> current.
+      const chain = [...(lin.parents || [])].reverse();
+      const chainHtml = chain.length
+        ? `<div class="d-lin-label">Şunun revizyonu</div>
+           <div class="d-lin-chain">` +
+             chain.map(p =>
+               `<span class="d-lin-node" onclick="selectEntity('${encodeURIComponent(p.key)}')">${escHtml(p.title)}</span>
+                <span class="d-lin-arrow">&#8594;</span>`).join('') +
+             `<span class="d-lin-node current">${escHtml(title)}</span></div>`
+        : '';
+
+      const kids = lin.children || [];
+      const kidsHtml = kids.length
+        ? `<div class="d-lin-label">Revizyonları</div>
+           <div class="d-lin-kids">` +
+             kids.map(c =>
+               `<div class="d-lin-kid" onclick="selectEntity('${encodeURIComponent(c.key)}')">
+                  <span>${escHtml(c.title)}</span><span>${c.total} kayıt</span>
+                </div>`).join('') +
+           `</div>`
+        : '';
+
+      const others = srchEntities.filter(e => e.key !== key);
+      const opts = ['<option value="">— revizyonu olmadığı —</option>']
+        .concat(others.map(e =>
+          `<option value="${encodeURIComponent(e.key)}"${chain.length && chain[chain.length-1].key === e.key ? ' selected' : ''}>${escHtml(e.title)}</option>`))
+        .join('');
+
+      el.innerHTML = `
+        ${chainHtml}${kidsHtml}
+        <div class="d-lin-label">Bu görev bir revizyon mu?</div>
+        <div class="d-lin-actions">
+          <select class="d-fs" id="linParentSel" onchange="setLineageParent()"></select>
+          ${chain.length ? '<button class="d-lin-clear" onclick="clearLineageParent()">Bağı kaldır</button>' : ''}
+        </div>`;
+      document.getElementById('linParentSel').innerHTML = opts;
+    }
+
+    async function setLineageParent() {
+      const sel = document.getElementById('linParentSel');
+      const child = srchEntities.find(e => e.key === srchActive);
+      if (!child) return;
+      const parent = sel.value
+        ? (srchEntities.find(e => e.key === decodeURIComponent(sel.value)) || {}).title
+        : null;
+      await postLineage(child.title, parent);
+    }
+
+    async function clearLineageParent() {
+      const child = srchEntities.find(e => e.key === srchActive);
+      if (child) await postLineage(child.title, null);
+    }
+
+    async function postLineage(childTitle, parentTitle) {
+      const res = await fetch('/daily/task-parent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ child_title: childTitle, parent_title: parentTitle }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.success) {
+        alert(data.error === 'invalid link (would create a cycle)'
+          ? 'Bu bağ döngü oluşturur — bir görev kendi revizyonunun revizyonu olamaz.'
+          : 'Bağ kurulamadı.');
+      }
+      if (srchActive) selectEntity(encodeURIComponent(srchActive));
     }
 
     // Merging is a rename: this task's rows take the target's title, so

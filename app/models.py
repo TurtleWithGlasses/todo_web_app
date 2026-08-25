@@ -19,6 +19,20 @@ class Setting(Base):
     value = Column(String, default="")
 
 
+class TaskLink(Base):
+    """Entity-level metadata for a task, keyed by its normalized title.
+
+    Tasks themselves are derived from the title on every read, so this
+    table only exists to hold what cannot be derived - currently the
+    "is a revision of" relationship. Rows are sparse: a task without
+    lineage has no row here at all.
+    """
+    __tablename__ = "task_links"
+    id = Column(Integer, primary_key=True)
+    norm_title = Column(String, nullable=False, unique=True, index=True)
+    parent_norm_title = Column(String, nullable=True, index=True)
+
+
 class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True)

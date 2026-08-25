@@ -15,7 +15,7 @@ from app.utils import (
     seed_categories, get_setting, set_setting,
     search_task_entities, get_task_history,
     get_daily_task, count_task_occurrences, rename_task_entity,
-    split_task_entity,
+    split_task_entity, set_task_parent, get_task_lineage,
 )
 import json
 
@@ -300,6 +300,27 @@ def daily_task_split(id):
         return jsonify({"success": False, "error": "new_title required"}), 400
     n = split_task_entity(id, new_title, bool(data.get("include_later")))
     return jsonify({"success": True, "split": n})
+
+@main.route("/daily/task-lineage", methods=["GET"])
+def daily_task_lineage():
+    """Ancestor chain and direct revisions of one task."""
+    key = request.args.get("key", "")
+    if not key:
+        return jsonify({"error": "key required"}), 400
+    return jsonify(get_task_lineage(key))
+
+@main.route("/daily/task-parent", methods=["POST"])
+def daily_task_parent():
+    """Mark a task as a revision of another; omit parent_title to clear it."""
+    data = request.get_json() or {}
+    child = (data.get("child_title") or "").strip()
+    if not child:
+        return jsonify({"success": False, "error": "child_title required"}), 400
+    parent = (data.get("parent_title") or "").strip() or None
+    ok = set_task_parent(child, parent)
+    if not ok:
+        return jsonify({"success": False, "error": "invalid link (would create a cycle)"}), 400
+    return jsonify({"success": True})
 
 @main.route("/daily/task-count", methods=["GET"])
 def daily_task_count():

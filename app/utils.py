@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
-from app.models import Base, Task, DailyTask, Category, Setting
+from app.models import Base, Task, DailyTask, Category, Setting, TaskLink
 
 engine = create_engine("sqlite:///todo.db", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
@@ -412,6 +412,9 @@ def rename_task_entity(old_title: str, new_title: str) -> int:
                 if normalize_title(t.title) == key]
         for t in rows:
             t.title = new_title
+        # Carry any lineage over to the new identity, otherwise a rename
+        # would silently orphan the "is a revision of" link.
+        _remap_task_links(db, key, normalize_title(new_title))
         db.commit()
         return len(rows)
 
@@ -449,7 +452,107 @@ def split_task_entity(task_id: int, new_title: str, include_later: bool = False)
             t.title = new_title
             t.repeat_group_id = new_gid
         db.commit()
-        return len(rows)
+
+    # A split can retire the original title entirely (e.g. splitting from
+    # the very first date), leaving its lineage row dangling.
+    prune_task_links()
+    return len(rows)
+
+# --- Revision lineage (phase 4) ---
+
+def _existing_task_keys(db):
+    return {normalize_title(t.title) for t in db.query(DailyTask).all()}
+
+def prune_task_links():
+    """Drop lineage rows pointing at titles that no longer exist.
+
+    Splitting or merging can retire a title entirely; without this the
+    orphaned link would keep surfacing a task that is gone.
+    """
+    with SessionLocal() as db:
+        live = _existing_task_keys(db)
+        removed = 0
+        for row in db.query(TaskLink).all():
+            if row.norm_title not in live:
+                db.delete(row); removed += 1
+            elif row.parent_norm_title and row.parent_norm_title not in live:
+                row.parent_norm_title = None
+        db.commit()
+        return removed
+
+def set_task_parent(child_title: str, parent_title: str = None) -> bool:
+    """Mark one task as a revision of another (or clear it when parent is None).
+
+    Refuses anything that would make a task its own ancestor, so the
+    chain can always be walked to a root.
+    """
+    ck = normalize_title(child_title)
+    if not ck:
+        return False
+    pk = normalize_title(parent_title) if parent_title else None
+    if pk == ck:
+        return False
+
+    with SessionLocal() as db:
+        links = {r.norm_title: r.parent_norm_title for r in db.query(TaskLink).all()}
+        # Walk up from the proposed parent; reaching the child means a cycle.
+        seen, cur = set(), pk
+        while cur:
+            if cur == ck or cur in seen:
+                return False
+            seen.add(cur)
+            cur = links.get(cur)
+
+        row = db.query(TaskLink).filter(TaskLink.norm_title == ck).first()
+        if pk is None:
+            if row:
+                db.delete(row)
+        elif row:
+            row.parent_norm_title = pk
+        else:
+            db.add(TaskLink(norm_title=ck, parent_norm_title=pk))
+        db.commit()
+        return True
+
+def get_task_lineage(key: str):
+    """Ancestor chain (nearest first) and direct revisions of a task."""
+    with SessionLocal() as db:
+        links = {r.norm_title: r.parent_norm_title for r in db.query(TaskLink).all()}
+        titles, totals = {}, {}
+        for t in db.query(DailyTask).all():
+            k = normalize_title(t.title)
+            titles[k] = t.title
+            totals[k] = totals.get(k, 0) + 1
+
+    def node(k):
+        return {"key": k, "title": titles.get(k, k), "total": totals.get(k, 0)}
+
+    chain, seen, cur = [], set(), links.get(key)
+    while cur and cur not in seen:
+        seen.add(cur)
+        chain.append(node(cur))
+        cur = links.get(cur)
+
+    children = sorted(
+        (node(k) for k, p in links.items() if p == key),
+        key=lambda n: n["title"],
+    )
+    return {"parents": chain, "children": children}
+
+def _remap_task_links(db, old_key: str, new_key: str):
+    """Follow a rename so lineage survives it."""
+    if old_key == new_key:
+        return
+    target = db.query(TaskLink).filter(TaskLink.norm_title == new_key).first()
+    moving = db.query(TaskLink).filter(TaskLink.norm_title == old_key).first()
+    if moving:
+        if target:
+            # Merging into a task that already has lineage: keep the target's.
+            db.delete(moving)
+        else:
+            moving.norm_title = new_key
+    for row in db.query(TaskLink).filter(TaskLink.parent_norm_title == old_key).all():
+        row.parent_norm_title = new_key
 
 def get_task_history(key: str):
     """Every occurrence of one task entity, newest first."""
