@@ -382,8 +382,21 @@
       to   { opacity:1; transform: translateY(0); }
     }
     .d-card:hover { background: var(--bg-card-hover); border-color: var(--border-hover); }
-    .d-card.tamamlandı { opacity: .6; }
-    .d-card.tamamlandı .d-card-title { text-decoration: line-through; color: var(--text-muted); }
+    /* Finished work reads lighter and carries the check mark instead of
+       being struck through; unfinished stays at full contrast. */
+    .d-card.tamamlandı {
+      opacity: .72;
+      border-color: rgba(var(--da-rgb), .28);
+    }
+    .d-card.tamamlandı .d-card-title { color: var(--text-secondary); font-weight: 500; }
+
+    /* Status marks: the same circuit-check as the app logo, drawn in
+       three stages — endpoints only, first leg, then the whole check. */
+    .d-mark { width: 18px; height: 18px; flex-shrink: 0; display: block; }
+    .d-mark.sm { width: 14px; height: 14px; }
+    .d-mark.doing { color: var(--da); }
+    .d-mark.todo  { color: var(--text-muted); }
+    .d-card-titlerow { display: flex; align-items: center; gap: 9px; }
 
     .d-card-top {
       display: flex;
@@ -1661,7 +1674,8 @@
       color: var(--text-primary);
       overflow-wrap: anywhere;
     }
-    .d-wk-task.done .d-wk-title { text-decoration: line-through; color: var(--text-muted); }
+    .d-wk-task.done .d-wk-title { color: var(--text-secondary); }
+    .d-wk-task.done { opacity: .8; }
     .d-wk-cat {
       font-size: .64rem;
       font-weight: 600;
@@ -1996,6 +2010,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
+
+  <!-- Gradient shared by every finished-status mark (matches the logo) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="dMarkGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#4338CA"/>
+        <stop offset="0.52" stop-color="#6D28D9"/>
+        <stop offset="1" stop-color="#0EA5E9"/>
+      </linearGradient>
+    </defs>
+  </svg>
 
   <!-- HEADER -->
   <header class="d-header">
@@ -2792,6 +2817,38 @@
       list.innerHTML = tasks.map(buildCard).join('');
     }
 
+    // Three stages of the logo's circuit-check: the two node dots alone
+    // (not started), the first leg drawn (in progress), then the complete
+    // check on the brand gradient (done). Replaces strikethrough.
+    function statusMark(status, small) {
+      const c = 'd-mark' + (small ? ' sm' : '');
+      if (status === 'tamamlandı') {
+        return `<svg class="${c} done" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="url(#dMarkGrad)"/>
+          <path d="M7 12.3 L10.3 15.6 L17 8.9" fill="none" stroke="#fff"
+                stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="7" cy="12.3" r="1.6" fill="#fff"/>
+          <circle cx="17" cy="8.9" r="1.6" fill="#fff"/>
+        </svg>`;
+      }
+      if (status === 'yapılıyor') {
+        return `<svg class="${c} doing" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="none"
+                stroke="currentColor" stroke-width="1.6" opacity=".55"/>
+          <path d="M7 12.3 L10.3 15.6" fill="none" stroke="currentColor"
+                stroke-width="2.3" stroke-linecap="round"/>
+          <circle cx="7" cy="12.3" r="1.6" fill="currentColor"/>
+          <circle cx="17" cy="8.9" r="1.6" fill="currentColor" opacity=".3"/>
+        </svg>`;
+      }
+      return `<svg class="${c} todo" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="none"
+              stroke="currentColor" stroke-width="1.6" opacity=".4"/>
+        <circle cx="7" cy="12.3" r="1.6" fill="currentColor" opacity=".55"/>
+        <circle cx="17" cy="8.9" r="1.6" fill="currentColor" opacity=".55"/>
+      </svg>`;
+    }
+
     function buildCard(t) {
       const STATUS_CYCLE = {
         'yapılacak': 'yapılıyor',
@@ -2824,7 +2881,10 @@
              onclick="openTaskPanel(${t.id})" title="Detay ve geçmiş">
           <div class="d-card-top">
             <div>
-              <span class="d-card-title">${escHtml(t.title)}</span>
+              <div class="d-card-titlerow">
+                ${statusMark(t.status)}
+                <span class="d-card-title">${escHtml(t.title)}</span>
+              </div>
               <div>${timeTag}</div>
             </div>
             <button class="d-status-pill pill-${t.status}"
@@ -3783,7 +3843,8 @@
       if (!t) return;
       panelTaskId = id;
 
-      document.getElementById('tpTitle').textContent = t.title;
+      document.getElementById('tpTitle').innerHTML =
+        `<span class="d-card-titlerow">${statusMark(t.status)}<span>${escHtml(t.title)}</span></span>`;
 
       const pri = { acil:'Acil', orta:'Orta', 'düşük':'Düşük' }[t.priority] || t.priority;
       const bits = [fmtLongDate(t.date)];
@@ -4211,6 +4272,7 @@
               return `
                 <div class="d-wk-task${isDone ? ' done' : ''}" style="--wk-cat:${color}" title="${escHtml(t.title)}">
                   <div class="d-wk-trow">
+                    ${statusMark(t.status, true)}
                     ${t.time ? `<span class="d-wk-time">${escHtml(t.time)}</span>` : ''}
                     <span class="d-wk-title">${escHtml(t.title)}</span>
                   </div>
