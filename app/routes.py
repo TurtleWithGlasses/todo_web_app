@@ -13,6 +13,7 @@ from app.utils import (
     update_repeat_group, get_month_dots,
     load_categories, add_category, update_category, delete_category,
     seed_categories, get_setting, set_setting,
+    search_task_entities, get_task_history,
 )
 import json
 
@@ -261,6 +262,19 @@ def daily_delete_repeat_group(group_id):
         return jsonify({"success": True, "deleted": deleted})
     delete_repeat_group(group_id)
     return jsonify({"success": True})
+
+@main.route("/daily/task-search", methods=["GET"])
+def daily_task_search():
+    """Tasks grouped by normalized title, newest/most-frequent first."""
+    return jsonify(search_task_entities(request.args.get("q", "")))
+
+@main.route("/daily/task-history", methods=["GET"])
+def daily_task_history():
+    """Every occurrence of one task entity (key = normalized title)."""
+    key = request.args.get("key", "")
+    if not key:
+        return jsonify({"error": "key required"}), 400
+    return jsonify(get_task_history(key))
 
 @main.route("/daily/timer-state", methods=["GET"])
 def timer_state_get():

@@ -1308,6 +1308,94 @@
     }
     .d-catmgr-add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--da-glow); }
 
+    /* ── TASK SEARCH MODAL ──────────────────────────────── */
+    .d-search-modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px;
+      width: 940px;
+      max-width: 96vw;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px) scale(.97);
+      transition: transform .25s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .d-overlay.open .d-search-modal { transform: translateY(0) scale(1); }
+
+    .d-srch-input { width: 100%; margin-bottom: 14px; }
+    .d-srch-body {
+      display: grid;
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      gap: 14px;
+      flex: 1;
+      min-height: 0;
+    }
+    @media (max-width: 780px) { .d-srch-body { grid-template-columns: 1fr; } }
+
+    .d-srch-list, .d-srch-detail {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 8px;
+      overflow-y: auto;
+      min-height: 220px;
+    }
+    .d-srch-detail { padding: 16px; }
+
+    .d-srch-row {
+      padding: 9px 11px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .15s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .d-srch-row:hover  { background: var(--bg-card-hover); }
+    .d-srch-row.active { background: var(--bg-card-hover); box-shadow: inset 3px 0 0 var(--da); }
+    .d-srch-rtop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .d-srch-title {
+      font-size: .86rem; font-weight: 600; color: var(--text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .d-srch-count {
+      flex-shrink: 0; font-size: .72rem; font-weight: 700;
+      color: var(--da); font-variant-numeric: tabular-nums;
+    }
+    .d-srch-meta {
+      font-size: .7rem; color: var(--text-muted);
+      display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    }
+    .d-srch-cat { display: inline-flex; align-items: center; gap: 4px; }
+    .d-srch-cdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    .d-srch-dtitle { font-size: 1.02rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .d-srch-dsum { font-size: .78rem; color: var(--text-muted); margin-bottom: 14px; }
+    .d-srch-dsum strong { color: var(--text-primary); }
+    .d-srch-occ {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 4px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background .15s;
+      border-radius: 8px;
+    }
+    .d-srch-occ:hover { background: var(--bg-card-hover); }
+    .d-srch-occ:last-child { border-bottom: none; }
+    .d-srch-odate {
+      font-size: .76rem; color: var(--text-primary);
+      font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 108px;
+    }
+    .d-srch-otime {
+      font-size: .72rem; color: var(--text-muted);
+      font-variant-numeric: tabular-nums; min-width: 42px;
+    }
+    .d-srch-ocat { font-size: .72rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .d-srch-hint { color: var(--text-muted); font-size: .84rem; padding: 24px 6px; text-align: center; }
+
     /* ── WEEK VIEW MODAL ─────────────────────────────────── */
     .d-week-modal {
       background: var(--bg-secondary);
@@ -1784,6 +1872,7 @@
       <h1>Günlük İş Takibi</h1>
     </div>
     <div class="d-header-right">
+      <button class="d-icon-btn" onclick="openSearch()" title="Görev ara">&#128269; Ara</button>
       <button class="d-icon-btn" onclick="openWeekView()" title="Haftalık takvim">&#128197; Hafta</button>
       <button class="d-icon-btn" onclick="openAnalysis()" title="Dönem analizi">📊 Analiz</button>
       <div id="themePickerWrap"></div>
@@ -2026,6 +2115,23 @@
       <div class="d-modal-foot">
         <button class="d-btn-cancel" onclick="closeModal()">İptal</button>
         <button class="d-btn-save" id="modalSubmitBtn" onclick="submitTask()">Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASK SEARCH MODAL -->
+  <div class="d-overlay" id="searchOverlay" onclick="handleSearchOverlayClick(event)">
+    <div class="d-search-modal">
+      <h2>Görev Ara</h2>
+      <input class="d-fi d-srch-input" id="srchInput" type="text"
+             placeholder="Görev adı ara… (boş bırakırsan tüm görevler listelenir)"
+             oninput="onSearchInput()" />
+      <div class="d-srch-body">
+        <div class="d-srch-list" id="srchList"></div>
+        <div class="d-srch-detail" id="srchDetail"></div>
+      </div>
+      <div class="d-modal-foot" style="margin-top:16px">
+        <button class="d-btn-cancel" onclick="closeSearch()">Kapat</button>
       </div>
     </div>
   </div>
@@ -2916,7 +3022,7 @@
 
     // ── Keyboard shortcuts ────────────────────────────────
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeWeekView(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); }
+      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeWeekView(); closeSearch(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); }
       if (e.key === 'Enter' && document.getElementById('overlay').classList.contains('open')) {
         const tag = document.activeElement.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -3435,6 +3541,103 @@
     Chart.defaults.color      = CHART_DEFAULTS.color;
     Chart.defaults.font.family = CHART_DEFAULTS.font.family;
     Chart.defaults.font.size   = CHART_DEFAULTS.font.size;
+
+    // ── Task search (entities grouped by normalized title) ──
+    let srchTimer    = null;
+    let srchEntities = [];
+    let srchActive   = null;
+
+    function openSearch() {
+      document.getElementById('searchOverlay').classList.add('open');
+      document.getElementById('srchDetail').innerHTML =
+        '<div class="d-srch-hint">Geçmişini görmek için soldan bir görev seç.</div>';
+      runSearch();
+      setTimeout(() => document.getElementById('srchInput').focus(), 60);
+    }
+
+    function closeSearch() {
+      document.getElementById('searchOverlay').classList.remove('open');
+    }
+
+    function handleSearchOverlayClick(e) {
+      if (e.target === document.getElementById('searchOverlay')) closeSearch();
+    }
+
+    // Debounced so typing does not fire a request per keystroke
+    function onSearchInput() {
+      clearTimeout(srchTimer);
+      srchTimer = setTimeout(runSearch, 180);
+    }
+
+    async function runSearch() {
+      const q = document.getElementById('srchInput').value.trim();
+      const res = await fetch(`/daily/task-search?q=${encodeURIComponent(q)}`);
+      srchEntities = await res.json();
+      renderSearchList();
+    }
+
+    function renderSearchList() {
+      const el = document.getElementById('srchList');
+      if (!srchEntities.length) {
+        el.innerHTML = '<div class="d-srch-hint">Eşleşen görev yok.</div>';
+        return;
+      }
+      el.innerHTML = srchEntities.map(e => {
+        const cats = e.categories.slice(0, 2).map(c =>
+          `<span class="d-srch-cat"><span class="d-srch-cdot" style="background:${catColorOf(c)}"></span>${escHtml(c)}</span>`
+        ).join('');
+        const more = e.categories.length > 2 ? `<span>+${e.categories.length - 2}</span>` : '';
+        return `
+          <div class="d-srch-row${srchActive === e.key ? ' active' : ''}" onclick="selectEntity('${encodeURIComponent(e.key)}')">
+            <div class="d-srch-rtop">
+              <span class="d-srch-title">${escHtml(e.title)}</span>
+              <span class="d-srch-count">${e.completed}/${e.total}</span>
+            </div>
+            <div class="d-srch-meta">${cats}${more}</div>
+          </div>`;
+      }).join('');
+    }
+
+    function fmtLongDate(iso) {
+      return new Date(iso + 'T00:00:00')
+        .toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    async function selectEntity(encKey) {
+      const key = decodeURIComponent(encKey);
+      srchActive = key;
+      renderSearchList();
+
+      const meta = srchEntities.find(e => e.key === key) || {};
+      const res  = await fetch(`/daily/task-history?key=${encodeURIComponent(key)}`);
+      const occ  = await res.json();
+
+      const range = occ.length
+        ? `${fmtLongDate(meta.first_date)} – ${fmtLongDate(meta.last_date)}`
+        : '';
+      const rows = occ.map(o => `
+        <div class="d-srch-occ" onclick="goToDayFromSearch('${o.date}')" title="Bu güne git">
+          <span class="d-srch-odate">${fmtLongDate(o.date)}</span>
+          <span class="d-srch-otime">${o.time || '—'}</span>
+          <span class="d-srch-ocat" style="color:${catColorOf(o.category)}">${escHtml(o.category) || '—'}</span>
+          <span class="d-status-pill pill-${o.status}">${escHtml(o.status)}</span>
+        </div>`).join('');
+
+      document.getElementById('srchDetail').innerHTML = `
+        <div class="d-srch-dtitle">${escHtml(meta.title || '')}</div>
+        <div class="d-srch-dsum">
+          <strong>${meta.total || 0}</strong> kez planlandı ·
+          <strong>${meta.completed || 0}</strong> tamamlandı${range ? ' · ' + range : ''}
+        </div>
+        ${rows || '<div class="d-srch-hint">Kayıt yok.</div>'}`;
+    }
+
+    function goToDayFromSearch(iso) {
+      currentDate = new Date(iso + 'T00:00:00');
+      updateDateLabel();
+      closeSearch();
+      loadTasks();
+    }
 
     // ── Week view ─────────────────────────────────────────
     let weekStart = null; // Monday of the week on screen

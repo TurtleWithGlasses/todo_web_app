@@ -325,6 +325,76 @@ def get_month_dots(year: int, month: int):
         },
     }
 
+# --- Task entity helpers (Phase 1: derived at query time, no schema change) ---
+
+def normalize_title(s: str) -> str:
+    """A task's identity key: trimmed, Turkish-aware case folded.
+
+    Python's str.lower() mishandles Turkish: "KITAP".lower() leaves a
+    stray combining dot ("ki̇tap") and "I".lower() gives "i" rather
+    than "ı". Mapping the two dotted/dotless pairs first keeps
+    "IŞIK"/"ışık" and "KİTAP"/"kitap" grouping together correctly.
+    """
+    return (s or "").strip().replace("İ", "i").replace("I", "ı").lower()
+
+def _entity_rows():
+    with SessionLocal() as db:
+        return db.query(DailyTask).all()
+
+def search_task_entities(query: str = "", limit: int = 60):
+    """Group every task row by normalized title into one entity per task.
+
+    Grouping is derived on read, so nothing is stored and nothing can
+    drift out of sync. Titles are matched on the normalized key, so
+    "SOCAR Aylik Raporu" and "SOCAR aylik raporu" collapse into one.
+    """
+    from collections import defaultdict
+    q = normalize_title(query)
+    buckets = defaultdict(list)
+    for t in _entity_rows():
+        key = normalize_title(t.title)
+        if not key or (q and q not in key):
+            continue
+        buckets[key].append(t)
+
+    out = []
+    for key, items in buckets.items():
+        items.sort(key=lambda t: (t.date, t.time or ""))
+        # Newest spelling wins as the display title, and categories are
+        # listed most-recent-first since they can differ per occurrence.
+        cats, seen = [], set()
+        for t in reversed(items):
+            c = t.category or ""
+            if c and c not in seen:
+                seen.add(c)
+                cats.append(c)
+        out.append({
+            "key":        key,
+            "title":      items[-1].title,
+            "total":      len(items),
+            "completed":  sum(1 for t in items if t.status == "tamamlandı"),
+            "first_date": items[0].date,
+            "last_date":  items[-1].date,
+            "categories": cats,
+        })
+    out.sort(key=lambda e: (-e["total"], e["title"]))
+    return out[:limit]
+
+def get_task_history(key: str):
+    """Every occurrence of one task entity, newest first."""
+    items = [t for t in _entity_rows() if normalize_title(t.title) == key]
+    items.sort(key=lambda t: (t.date, t.time or ""), reverse=True)
+    return [{
+        "id":          t.id,
+        "date":        t.date,
+        "time":        t.time or "",
+        "title":       t.title,
+        "category":    t.category or "",
+        "priority":    t.priority,
+        "status":      t.status,
+        "description": t.description or "",
+    } for t in items]
+
 def set_daily_task_status(task_id: int, status: str):
     with SessionLocal() as db:
         task = db.get(DailyTask, task_id)
