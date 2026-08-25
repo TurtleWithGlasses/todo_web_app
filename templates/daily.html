@@ -1359,7 +1359,15 @@
     .d-srch-occ.current {
       background: rgba(var(--da-rgb), .10);
       box-shadow: inset 3px 0 0 var(--da);
+      /* clear the inset bar so this row's text stays flush with the others */
+      padding-left: 15px;
     }
+
+    /* Keep section headings and lineage rows on the same left edge as the
+       history rows, so the panel reads as one aligned column. */
+    .d-tp-sec { padding-left: 12px; }
+    #tpLineage .d-lin-chain { padding-left: 12px; }
+    .d-lin-kid { padding: 6px 12px; }
 
     /* ── TASK SEARCH MODAL ──────────────────────────────── */
     .d-search-modal {
@@ -1429,8 +1437,8 @@
     .d-srch-dsum { font-size: .78rem; color: var(--text-muted); margin-bottom: 14px; }
     .d-srch-dsum strong { color: var(--text-primary); }
     .d-srch-occ {
-      display: flex; align-items: center; gap: 10px;
-      padding: 8px 4px;
+      display: flex; align-items: center; gap: 12px;
+      padding: 9px 12px;
       border-bottom: 1px solid var(--border);
       cursor: pointer;
       transition: background .15s;
@@ -3829,7 +3837,7 @@
           <span class="d-srch-odate">${fmtLongDate(o.date)}</span>
           <span class="d-srch-otime">${o.time || '—'}</span>
           <span class="d-srch-ocat" style="color:${catColorOf(o.category)}">${escHtml(o.category) || '—'}</span>
-          <span class="d-status-pill pill-${o.status}">${escHtml(o.status)}</span>
+          <span class="d-status-pill pill-${o.status}">${escHtml(TP_STATUS_LABEL[o.status] || o.status)}</span>
         </div>`).join('') || '<div class="d-srch-hint">Kayıt yok.</div>';
 
       const chain = [...(lin.parents || [])].reverse();
@@ -3959,7 +3967,7 @@
           <span class="d-srch-odate">${fmtLongDate(o.date)}</span>
           <span class="d-srch-otime">${o.time || '—'}</span>
           <span class="d-srch-ocat" style="color:${catColorOf(o.category)}">${escHtml(o.category) || '—'}</span>
-          <span class="d-status-pill pill-${o.status}">${escHtml(o.status)}</span>
+          <span class="d-status-pill pill-${o.status}">${escHtml(TP_STATUS_LABEL[o.status] || o.status)}</span>
         </div>`).join('');
 
       document.getElementById('srchDetail').innerHTML = `
