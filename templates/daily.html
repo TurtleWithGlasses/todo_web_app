@@ -394,8 +394,17 @@
        three stages — endpoints only, first leg, then the whole check. */
     .d-mark { width: 18px; height: 18px; flex-shrink: 0; display: block; }
     .d-mark.sm { width: 14px; height: 14px; }
-    .d-mark.doing { color: var(--da); }
-    .d-mark.todo  { color: var(--text-muted); }
+    .d-mark.todo { color: var(--text-muted); }
+    /* The supplied icons are drawn for motion (their ring is dashed), so
+       work in progress gently breathes while finished work sits still. */
+    .d-mark.doing { animation: dMarkPulse 2.4s ease-in-out infinite; }
+    @keyframes dMarkPulse {
+      0%, 100% { opacity: 1;   transform: scale(1); }
+      50%      { opacity: .68; transform: scale(.9); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .d-mark.doing { animation: none; }
+    }
     .d-card-titlerow { display: flex; align-items: center; gap: 9px; }
 
     .d-card-top {
@@ -2011,17 +2020,6 @@
 </head>
 <body>
 
-  <!-- Gradient shared by every finished-status mark (matches the logo) -->
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <defs>
-      <linearGradient id="dMarkGrad" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#4338CA"/>
-        <stop offset="0.52" stop-color="#6D28D9"/>
-        <stop offset="1" stop-color="#0EA5E9"/>
-      </linearGradient>
-    </defs>
-  </svg>
-
   <!-- HEADER -->
   <header class="d-header">
     <div class="d-header-left">
@@ -2822,25 +2820,17 @@
     // check on the brand gradient (done). Replaces strikethrough.
     function statusMark(status, small) {
       const c = 'd-mark' + (small ? ' sm' : '');
+      // Supplied icon sets: 1a marks finished work, 1b marks work in
+      // progress. Referenced as <img> so the browser caches one copy
+      // rather than inlining the SVG into every card.
       if (status === 'tamamlandı') {
-        return `<svg class="${c} done" viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="url(#dMarkGrad)"/>
-          <path d="M7 12.3 L10.3 15.6 L17 8.9" fill="none" stroke="#fff"
-                stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="7" cy="12.3" r="1.6" fill="#fff"/>
-          <circle cx="17" cy="8.9" r="1.6" fill="#fff"/>
-        </svg>`;
+        return `<img class="${c} done" src="/static/1a/icon-small.svg" alt="" aria-hidden="true">`;
       }
       if (status === 'yapılıyor') {
-        return `<svg class="${c} doing" viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="none"
-                stroke="currentColor" stroke-width="1.6" opacity=".55"/>
-          <path d="M7 12.3 L10.3 15.6" fill="none" stroke="currentColor"
-                stroke-width="2.3" stroke-linecap="round"/>
-          <circle cx="7" cy="12.3" r="1.6" fill="currentColor"/>
-          <circle cx="17" cy="8.9" r="1.6" fill="currentColor" opacity=".3"/>
-        </svg>`;
+        return `<img class="${c} doing" src="/static/1b/icon-small.svg" alt="" aria-hidden="true">`;
       }
+      // No icon was supplied for "not started", so it keeps a quiet
+      // outline: the two endpoints with nothing drawn between them.
       return `<svg class="${c} todo" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="none"
               stroke="currentColor" stroke-width="1.6" opacity=".4"/>
