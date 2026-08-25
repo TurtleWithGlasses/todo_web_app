@@ -14,6 +14,7 @@ from app.utils import (
     load_categories, add_category, update_category, delete_category,
     seed_categories, get_setting, set_setting,
     search_task_entities, get_task_history,
+    get_daily_task, count_task_occurrences, rename_task_entity,
 )
 import json
 
@@ -197,11 +198,24 @@ def daily_edit(id):
     data = request.get_json()
     allowed = {"title", "description", "time", "category", "priority"}
     fields = {k: v for k, v in data.items() if k in allowed}
-    if data.get("apply_to_group") and data.get("group_id"):
-        update_repeat_group(data["group_id"], **fields)
-    else:
-        update_daily_task(id, **fields)
-    return jsonify({"success": True})
+
+    # Title is identity: renaming re-identifies the task, so it always
+    # applies to every occurrence. The repeat-group checkbox still
+    # governs the remaining, per-day fields.
+    renamed = 0
+    new_title = fields.pop("title", None)
+    if new_title is not None:
+        current = get_daily_task(id)
+        new_title = (new_title or "").strip()
+        if current and new_title and new_title != current["title"]:
+            renamed = rename_task_entity(current["title"], new_title)
+
+    if fields:
+        if data.get("apply_to_group") and data.get("group_id"):
+            update_repeat_group(data["group_id"], **fields)
+        else:
+            update_daily_task(id, **fields)
+    return jsonify({"success": True, "renamed": renamed})
 
 @main.route("/daily/status/<int:id>", methods=["POST"])
 def daily_status(id):
@@ -275,6 +289,21 @@ def daily_task_history():
     if not key:
         return jsonify({"error": "key required"}), 400
     return jsonify(get_task_history(key))
+
+@main.route("/daily/task-count", methods=["GET"])
+def daily_task_count():
+    """Rows a rename of this task would touch, for the confirmation prompt."""
+    return jsonify({"count": count_task_occurrences(request.args.get("title", ""))})
+
+@main.route("/daily/task-rename", methods=["POST"])
+def daily_task_rename():
+    """Retitle a whole task. Merging is the same operation: rename A to B's title."""
+    data = request.get_json() or {}
+    old = (data.get("old_title") or "").strip()
+    new = (data.get("new_title") or "").strip()
+    if not old or not new:
+        return jsonify({"success": False, "error": "old_title and new_title required"}), 400
+    return jsonify({"success": True, "renamed": rename_task_entity(old, new)})
 
 @main.route("/daily/timer-state", methods=["GET"])
 def timer_state_get():

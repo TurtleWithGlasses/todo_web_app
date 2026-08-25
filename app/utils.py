@@ -380,6 +380,41 @@ def search_task_entities(query: str = "", limit: int = 60):
     out.sort(key=lambda e: (-e["total"], e["title"]))
     return out[:limit]
 
+def get_daily_task(task_id: int):
+    """Minimal read of one task row (used to learn its title before a rename)."""
+    with SessionLocal() as db:
+        t = db.get(DailyTask, task_id)
+        return {"id": t.id, "title": t.title} if t else None
+
+def count_task_occurrences(title: str) -> int:
+    """How many rows share this task's identity (i.e. a rename's blast radius)."""
+    key = normalize_title(title)
+    if not key:
+        return 0
+    with SessionLocal() as db:
+        return sum(1 for t in db.query(DailyTask).all()
+                   if normalize_title(t.title) == key)
+
+def rename_task_entity(old_title: str, new_title: str) -> int:
+    """Retitle every occurrence sharing this task's identity.
+
+    Under title-as-identity a rename is a re-identification, so it always
+    applies to the whole task rather than a single day - independent of
+    the repeat-group checkbox, and reaching standalone rows and other
+    repeat groups that happen to share the title. Returns rows changed.
+    """
+    key = normalize_title(old_title)
+    new_title = (new_title or "").strip()
+    if not key or not new_title:
+        return 0
+    with SessionLocal() as db:
+        rows = [t for t in db.query(DailyTask).all()
+                if normalize_title(t.title) == key]
+        for t in rows:
+            t.title = new_title
+        db.commit()
+        return len(rows)
+
 def get_task_history(key: str):
     """Every occurrence of one task entity, newest first."""
     items = [t for t in _entity_rows() if normalize_title(t.title) == key]

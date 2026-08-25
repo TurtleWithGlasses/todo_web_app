@@ -1395,6 +1395,22 @@
     }
     .d-srch-ocat { font-size: .72rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .d-srch-hint { color: var(--text-muted); font-size: .84rem; padding: 24px 6px; text-align: center; }
+    .d-srch-merge { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .d-srch-mergebtn {
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: 9px;
+      color: var(--text-secondary);
+      font-family: 'Outfit', sans-serif;
+      font-size: .78rem;
+      padding: 8px 12px;
+      width: 100%;
+      transition: all .15s;
+    }
+    .d-srch-mergebtn:hover { color: var(--da); border-color: var(--da); }
+    .d-srch-mergebox { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+    .d-srch-mergebox select { flex: 1; min-width: 0; }
+    .d-srch-mergehint { font-size: .72rem; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
 
     /* ── WEEK VIEW MODAL ─────────────────────────────────── */
     .d-week-modal {
@@ -2983,6 +2999,19 @@
       };
 
       if (editingTaskId !== null) {
+        // Title is identity, so a rename always applies to the whole task.
+        // Warn first when that reaches beyond the day being edited.
+        const orig = allTasks.find(t => t.id === editingTaskId);
+        if (orig && title !== orig.title) {
+          const cRes = await fetch(`/daily/task-count?title=${encodeURIComponent(orig.title)}`);
+          const { count } = await cRes.json();
+          if (count > 1) {
+            const ok = confirm(
+              `"${orig.title}" gorevinin ${count} kaydinin tamami "${title}" olarak degistirilecek.\n\n` +
+              `Devam edilsin mi?`);
+            if (!ok) return;
+          }
+        }
         const applyAll = editingGroupId && document.getElementById('editAllRepeatsCheck').checked;
         await fetch(`/daily/edit/${editingTaskId}`, {
           method: 'POST',
@@ -3629,7 +3658,64 @@
           <strong>${meta.total || 0}</strong> kez planlandı ·
           <strong>${meta.completed || 0}</strong> tamamlandı${range ? ' · ' + range : ''}
         </div>
-        ${rows || '<div class="d-srch-hint">Kayıt yok.</div>'}`;
+        ${rows || '<div class="d-srch-hint">Kayıt yok.</div>'}
+        <div class="d-srch-merge">
+          <button class="d-srch-mergebtn" onclick="toggleMergePicker()">
+            &#128279; Başka bir görevle birleştir
+          </button>
+          <div class="d-srch-mergebox" id="srchMergeBox" style="display:none">
+            <select class="d-fs" id="srchMergeTarget"></select>
+            <button class="d-btn-save" onclick="doMerge()">Birleştir</button>
+          </div>
+          <div class="d-srch-mergehint" id="srchMergeHint" style="display:none">
+            Bu görevin tüm kayıtları seçilen görevin adını alır ve iki görev tek görev olur.
+          </div>
+        </div>`;
+    }
+
+    // Merging is a rename: this task's rows take the target's title, so
+    // by the title-as-identity rule the two become one task.
+    function toggleMergePicker() {
+      const box  = document.getElementById('srchMergeBox');
+      const hint = document.getElementById('srchMergeHint');
+      const open = box.style.display === 'none';
+      box.style.display  = open ? 'flex' : 'none';
+      hint.style.display = open ? 'block' : 'none';
+      if (!open) return;
+
+      const others = srchEntities.filter(e => e.key !== srchActive);
+      const sel = document.getElementById('srchMergeTarget');
+      sel.innerHTML = others.length
+        ? others.map(e => `<option value="${encodeURIComponent(e.key)}">${escHtml(e.title)} (${e.total})</option>`).join('')
+        : '<option value="">Başka görev yok</option>';
+    }
+
+    async function doMerge() {
+      const encTarget = document.getElementById('srchMergeTarget').value;
+      if (!encTarget) return;
+      const target = srchEntities.find(e => e.key === decodeURIComponent(encTarget));
+      const source = srchEntities.find(e => e.key === srchActive);
+      if (!target || !source) return;
+
+      const ok = confirm(
+        `"${source.title}" gorevinin ${source.total} kaydi "${target.title}" adiyla birlestirilecek.\n\n` +
+        `Sonucta ${source.total + target.total} kayitli tek bir gorev kalacak. Devam edilsin mi?`);
+      if (!ok) return;
+
+      const res = await fetch('/daily/task-rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_title: source.title, new_title: target.title }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.success) { alert('Birleştirme başarısız.'); return; }
+
+      srchActive = null;
+      await runSearch();
+      const merged = srchEntities.find(e => e.title === target.title);
+      if (merged) selectEntity(encodeURIComponent(merged.key));
+      await loadTasks();
+      showTimerToast(`${data.renamed} kayıt birleştirildi`);
     }
 
     function goToDayFromSearch(iso) {
