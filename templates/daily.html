@@ -1308,6 +1308,59 @@
     }
     .d-catmgr-add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--da-glow); }
 
+    /* ── TASK DETAIL PANEL ──────────────────────────────── */
+    .d-taskpanel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      width: 620px;
+      max-width: 96vw;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px) scale(.97);
+      transition: transform .25s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .d-overlay.open .d-taskpanel { transform: translateY(0) scale(1); }
+
+    .d-tp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .d-tp-title { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
+    .d-tp-meta {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-top: 7px; font-size: .76rem; color: var(--text-muted);
+    }
+    .d-tp-desc {
+      margin-top: 12px; padding: 10px 12px;
+      background: var(--bg-card); border-radius: 10px;
+      font-size: .82rem; color: var(--text-secondary); line-height: 1.55;
+    }
+
+    .d-tp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .d-tp-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 9px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-family: 'Outfit', sans-serif; font-size: .79rem; line-height: 1;
+      transition: all .15s;
+    }
+    .d-tp-btn:hover { color: var(--da); border-color: var(--da); }
+    .d-tp-btn.danger:hover { color: var(--danger); border-color: var(--danger); }
+
+    .d-tp-scroll { overflow-y: auto; margin-top: 16px; flex: 1; min-height: 0; }
+    .d-tp-sec {
+      font-size: .68rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--text-muted);
+      padding-top: 14px; margin-bottom: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .d-srch-occ.current {
+      background: rgba(var(--da-rgb), .10);
+      box-shadow: inset 3px 0 0 var(--da);
+    }
+
     /* ── TASK SEARCH MODAL ──────────────────────────────── */
     .d-search-modal {
       background: var(--bg-secondary);
@@ -2202,6 +2255,34 @@
     </div>
   </div>
 
+  <!-- TASK DETAIL PANEL -->
+  <div class="d-overlay" id="taskPanelOverlay" onclick="handleTaskPanelClick(event)">
+    <div class="d-taskpanel">
+      <div class="d-tp-head">
+        <div>
+          <div class="d-tp-title" id="tpTitle"></div>
+          <div class="d-tp-meta" id="tpMeta"></div>
+        </div>
+        <button class="d-status-pill" id="tpStatus" onclick="tpCycleStatus()" title="Durumu değiştir"></button>
+      </div>
+      <div class="d-tp-desc" id="tpDesc" style="display:none"></div>
+      <div class="d-tp-actions">
+        <button class="d-tp-btn" onclick="tpEdit()">&#9998; Düzenle</button>
+        <button class="d-tp-btn" onclick="tpMove()">&#8594; Taşı</button>
+        <button class="d-tp-btn" onclick="tpCopy()">&#10697; Kopyala</button>
+        <button class="d-tp-btn danger" onclick="tpDelete()">&#10005; Sil</button>
+      </div>
+      <div class="d-tp-scroll">
+        <div id="tpLineage"></div>
+        <div class="d-tp-sec" id="tpHistHead">Geçmiş</div>
+        <div id="tpHist"></div>
+      </div>
+      <div class="d-modal-foot" style="margin-top:14px">
+        <button class="d-btn-cancel" onclick="closeTaskPanel()">Kapat</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TASK SEARCH MODAL -->
   <div class="d-overlay" id="searchOverlay" onclick="handleSearchOverlayClick(event)">
     <div class="d-search-modal">
@@ -2725,17 +2806,21 @@
       const priLabel = { acil:'Acil', orta:'Orta', 'düşük':'Düşük' }[t.priority] || t.priority;
       const repeatBtn = t.repeat_group_id
         ? `<button class="d-repeat-btn active" onclick="openRepMenu(event,${t.id},${t.repeat_group_id})" title="Tekrar grubu">🔁</button>`
-        : `<button class="d-repeat-btn" onclick="openRepeatModal(${t.id})" title="Tekrarlayan görev yap">🔁</button>`;
+        : `<button class="d-repeat-btn" onclick="event.stopPropagation(); openRepeatModal(${t.id})" title="Tekrarlayan görev yap">🔁</button>`;
 
+      // Edit / move / copy / delete now live in the detail panel, so the
+      // whole card is the way in. The repeat button stays: its menu is a
+      // positioned popup that would render behind a modal overlay.
       return `
-        <div class="d-card ${t.status}" data-id="${t.id}">
+        <div class="d-card ${t.status}" data-id="${t.id}"
+             onclick="openTaskPanel(${t.id})" title="Detay ve geçmiş">
           <div class="d-card-top">
             <div>
               <span class="d-card-title">${escHtml(t.title)}</span>
               <div>${timeTag}</div>
             </div>
             <button class="d-status-pill pill-${t.status}"
-                    onclick="cycleStatus(${t.id},'${STATUS_CYCLE[t.status]}')"
+                    onclick="event.stopPropagation(); cycleStatus(${t.id},'${STATUS_CYCLE[t.status]}')"
                     title="Durumu değiştir">
               ${STATUS_LABEL[t.status]}
             </button>
@@ -2746,11 +2831,7 @@
               ${catTag}
               <span class="d-pri-tag pri-${t.priority}">${priLabel}</span>
             </div>
-            <button class="d-edit-btn" onclick="openEditModal(${t.id})" title="Düzenle">✏</button>
             ${repeatBtn}
-            <button class="d-move-btn" onclick="openTransferModal(${t.id},'move')" title="Başka tarihe taşı">→</button>
-            <button class="d-copy-btn" onclick="openTransferModal(${t.id},'copy')" title="Başka tarihe kopyala">⧉</button>
-            <button class="d-del-btn" onclick="deleteTask(${t.id})" title="Sil">✕</button>
           </div>
         </div>`;
     }
@@ -3131,7 +3212,7 @@
 
     // ── Keyboard shortcuts ────────────────────────────────
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeWeekView(); closeSearch(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); }
+      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeWeekView(); closeSearch(); closeTaskPanel(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); }
       if (e.key === 'Enter' && document.getElementById('overlay').classList.contains('open')) {
         const tag = document.activeElement.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -3681,6 +3762,123 @@
       closeModal();
       await loadTasks();
       showTimerToast(`${data.split} kayıt ayrıldı`);
+    }
+
+    // ── Task detail panel ─────────────────────────────────
+    let panelTaskId = null;
+
+    const TP_STATUS_LABEL = { 'yapılacak':'Yapılacak', 'yapılıyor':'Yapılıyor', 'tamamlandı':'Tamamlandı' };
+    const TP_STATUS_NEXT  = { 'yapılacak':'yapılıyor', 'yapılıyor':'tamamlandı', 'tamamlandı':'yapılacak' };
+
+    function openTaskPanel(id) {
+      const t = allTasks.find(x => x.id === id);
+      if (!t) return;
+      panelTaskId = id;
+
+      document.getElementById('tpTitle').textContent = t.title;
+
+      const pri = { acil:'Acil', orta:'Orta', 'düşük':'Düşük' }[t.priority] || t.priority;
+      const bits = [fmtLongDate(t.date)];
+      if (t.time) bits.push(t.time);
+      document.getElementById('tpMeta').innerHTML =
+        bits.map(b => `<span>${escHtml(b)}</span>`).join('<span>·</span>') +
+        (t.category ? `<span>·</span><span style="color:${catColorOf(t.category)}">${escHtml(t.category)}</span>` : '') +
+        `<span>·</span><span>${escHtml(pri)}</span>`;
+
+      const st = document.getElementById('tpStatus');
+      st.className = 'd-status-pill pill-' + t.status;
+      st.textContent = TP_STATUS_LABEL[t.status] || t.status;
+
+      const desc = document.getElementById('tpDesc');
+      desc.style.display = t.description ? '' : 'none';
+      desc.textContent = t.description || '';
+
+      document.getElementById('tpHist').innerHTML = '';
+      document.getElementById('tpLineage').innerHTML = '';
+      document.getElementById('taskPanelOverlay').classList.add('open');
+      loadPanelHistory(t);
+    }
+
+    function closeTaskPanel() {
+      document.getElementById('taskPanelOverlay').classList.remove('open');
+      panelTaskId = null;
+    }
+
+    function handleTaskPanelClick(e) {
+      if (e.target === document.getElementById('taskPanelOverlay')) closeTaskPanel();
+    }
+
+    // Every past and future occurrence of this task, plus any revision
+    // lineage — the same entity data the search panel uses.
+    async function loadPanelHistory(t) {
+      const [hRes, lRes] = await Promise.all([
+        fetch(`/daily/task-history?key=${encodeURIComponent(t.key)}`),
+        fetch(`/daily/task-lineage?key=${encodeURIComponent(t.key)}`),
+      ]);
+      const occ = await hRes.json();
+      const lin = await lRes.json();
+      if (panelTaskId !== t.id) return;   // panel moved on while loading
+
+      const done = occ.filter(o => o.status === 'tamamlandı').length;
+      document.getElementById('tpHistHead').textContent =
+        `Geçmiş — ${occ.length} kayıt · ${done} tamamlandı`;
+
+      document.getElementById('tpHist').innerHTML = occ.map(o => `
+        <div class="d-srch-occ${o.id === t.id ? ' current' : ''}"
+             onclick="tpGoToDay('${o.date}')" title="Bu güne git">
+          <span class="d-srch-odate">${fmtLongDate(o.date)}</span>
+          <span class="d-srch-otime">${o.time || '—'}</span>
+          <span class="d-srch-ocat" style="color:${catColorOf(o.category)}">${escHtml(o.category) || '—'}</span>
+          <span class="d-status-pill pill-${o.status}">${escHtml(o.status)}</span>
+        </div>`).join('') || '<div class="d-srch-hint">Kayıt yok.</div>';
+
+      const chain = [...(lin.parents || [])].reverse();
+      const kids  = lin.children || [];
+      let html = '';
+      if (chain.length) {
+        html += `<div class="d-tp-sec" style="border-top:none;padding-top:0">Şunun revizyonu</div>
+                 <div class="d-lin-chain">` +
+                chain.map(p => `<span class="d-lin-node current">${escHtml(p.title)}</span>
+                                <span class="d-lin-arrow">&#8594;</span>`).join('') +
+                `<span class="d-lin-node current">${escHtml(t.title)}</span></div>`;
+      }
+      if (kids.length) {
+        html += `<div class="d-tp-sec"${chain.length ? '' : ' style="border-top:none;padding-top:0"'}>Revizyonları</div>
+                 <div class="d-lin-kids">` +
+                kids.map(c => `<div class="d-lin-kid"><span>${escHtml(c.title)}</span><span>${c.total} kayıt</span></div>`).join('') +
+                `</div>`;
+      }
+      document.getElementById('tpLineage').innerHTML = html;
+    }
+
+    function tpGoToDay(iso) {
+      currentDate = new Date(iso + 'T00:00:00');
+      updateDateLabel();
+      closeTaskPanel();
+      loadTasks();
+    }
+
+    async function tpCycleStatus() {
+      const t = allTasks.find(x => x.id === panelTaskId);
+      if (!t) return;
+      await cycleStatus(t.id, TP_STATUS_NEXT[t.status]);
+      const fresh = allTasks.find(x => x.id === panelTaskId);
+      if (fresh) openTaskPanel(fresh.id);
+    }
+
+    // The panel hands off to the existing modals, closing first so two
+    // overlays never stack.
+    function tpEdit() { const id = panelTaskId; closeTaskPanel(); openEditModal(id); }
+    function tpMove() { const id = panelTaskId; closeTaskPanel(); openTransferModal(id, 'move'); }
+    function tpCopy() { const id = panelTaskId; closeTaskPanel(); openTransferModal(id, 'copy'); }
+
+    async function tpDelete() {
+      const t = allTasks.find(x => x.id === panelTaskId);
+      if (!t) return;
+      if (!confirm(`"${t.title}" bu tarihten silinecek.\n\nDevam edilsin mi?`)) return;
+      const id = panelTaskId;
+      closeTaskPanel();
+      await deleteTask(id);
     }
 
     // ── Task search (entities grouped by normalized title) ──

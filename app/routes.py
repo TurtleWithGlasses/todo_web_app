@@ -16,6 +16,7 @@ from app.utils import (
     search_task_entities, get_task_history,
     get_daily_task, count_task_occurrences, rename_task_entity,
     split_task_entity, set_task_parent, get_task_lineage,
+    normalize_title,
 )
 import json
 
@@ -163,6 +164,9 @@ def daily_get_tasks():
             "date": t.date,
             "position": t.position,
             "repeat_group_id": t.repeat_group_id,
+            # Identity key, computed server-side so the client never has to
+            # reimplement the Turkish-aware folding and drift from it.
+            "key": normalize_title(t.title),
         }
         for t in tasks
     ])
