@@ -88,6 +88,40 @@ def reset_all_tasks(month: str):
         db.commit()
 
 
+# --- Monthly task entities (TaskFlow) ---
+#
+# Same identity rule as the daily page: a task is its normalized title.
+# Grouping is derived on read, so nothing is stored and nothing can drift.
+
+CHECKED = "☑"   # the tick these two columns store
+
+def get_month_task_history(key: str):
+    """Every month this task has appeared, newest first."""
+    with SessionLocal() as db:
+        rows = db.query(Task).all()
+    items = [t for t in rows if normalize_title(t.text) == key and t.month]
+    items.sort(key=lambda t: t.month, reverse=True)
+    return [{
+        "id":        t.id,
+        "month":     t.month,
+        "text":      t.text,
+        "data_done": t.data_status == CHECKED,
+        "work_done": t.work_status == CHECKED,
+    } for t in items]
+
+def get_month_task_summary(key: str):
+    """Headline counts for a task across every month it has run."""
+    hist = get_month_task_history(key)
+    return {
+        "months":     len(hist),
+        "data_done":  sum(1 for h in hist if h["data_done"]),
+        "work_done":  sum(1 for h in hist if h["work_done"]),
+        "both_done":  sum(1 for h in hist if h["data_done"] and h["work_done"]),
+        "first_month": hist[-1]["month"] if hist else None,
+        "last_month":  hist[0]["month"]  if hist else None,
+    }
+
+
 # --- Setting utilities (key-value store) ---
 
 def get_setting(key: str):

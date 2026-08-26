@@ -16,7 +16,7 @@ from app.utils import (
     search_task_entities, get_task_history,
     get_daily_task, count_task_occurrences, rename_task_entity,
     split_task_entity, set_task_parent, get_task_lineage,
-    normalize_title,
+    normalize_title, get_month_task_history, get_month_task_summary,
 )
 import json
 
@@ -56,10 +56,23 @@ def get_tasks():
             "text": task.text,
             "data_status": task.data_status,
             "work_status": task.work_status,
-            "position": task.position
+            "position": task.position,
+            # Identity key, so the client never reimplements the folding
+            "key": normalize_title(task.text),
         }
         for task in tasks
     ])
+
+@main.route("/task-history", methods=["GET"])
+def task_history():
+    """Every month one TaskFlow task has run, plus headline counts."""
+    key = request.args.get("key", "")
+    if not key:
+        return jsonify({"error": "key required"}), 400
+    return jsonify({
+        "summary": get_month_task_summary(key),
+        "months":  get_month_task_history(key),
+    })
 
 @main.route("/months", methods=["GET"])
 def months():

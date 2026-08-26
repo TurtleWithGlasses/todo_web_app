@@ -48,6 +48,80 @@
       min-width: 160px;
       text-align: center;
     }
+
+    /* ── Task history panel ─────────────────────────────── */
+    .tf-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .tf-overlay.open { opacity: 1; pointer-events: all; }
+    .tf-panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px;
+      width: 560px; max-width: 94vw; max-height: 86vh;
+      display: flex; flex-direction: column;
+      transform: translateY(18px) scale(.97);
+      transition: transform .25s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .tf-overlay.open .tf-panel { transform: translateY(0) scale(1); }
+
+    .tf-title { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
+    .tf-sum { margin-top: 7px; font-size: .8rem; color: var(--text-muted); }
+    .tf-sum strong { color: var(--text-primary); }
+
+    .tf-sec {
+      font-size: .68rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--text-muted);
+      margin: 18px 0 4px; padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .tf-scroll { overflow-y: auto; flex: 1; min-height: 0; }
+
+    .tf-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 9px;
+      cursor: pointer; transition: background .15s;
+    }
+    .tf-row:hover { background: var(--bg-card); }
+    .tf-row.current { background: var(--bg-card); box-shadow: inset 3px 0 0 var(--accent); padding-left: 15px; }
+    .tf-month {
+      font-size: .84rem; color: var(--text-primary);
+      min-width: 130px; font-variant-numeric: tabular-nums;
+    }
+    .tf-flags { display: flex; gap: 8px; margin-left: auto; }
+    .tf-flag {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: .72rem; padding: 3px 10px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .tf-flag.on { color: var(--success); border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.10); }
+    .tf-hint { color: var(--text-muted); font-size: .84rem; padding: 20px 4px; text-align: center; }
+
+    .tf-foot { display: flex; justify-content: flex-end; margin-top: 16px; }
+    .tf-close {
+      padding: 9px 18px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text-secondary); font-family: 'Outfit', sans-serif;
+      font-size: .85rem; cursor: pointer; transition: all .15s;
+    }
+    .tf-close:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+
+    .task-row { cursor: pointer; }
+    .task-row .task-text,
+    .task-row .status-btn,
+    .task-row .delete-btn,
+    .task-row .drag-handle { cursor: auto; }
+    .task-row .status-btn,
+    .task-row .delete-btn { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -107,6 +181,17 @@
     </div>
 
     <ul id="taskList"></ul>
+  </div>
+
+  <!-- TASK HISTORY PANEL -->
+  <div class="tf-overlay" id="tfOverlay" onclick="handleTfOverlayClick(event)">
+    <div class="tf-panel">
+      <div class="tf-title" id="tfTitle"></div>
+      <div class="tf-sum" id="tfSum"></div>
+      <div class="tf-sec">Aylara göre geçmiş</div>
+      <div class="tf-scroll"><div id="tfRows"></div></div>
+      <div class="tf-foot"><button class="tf-close" onclick="closeTaskHistory()">Kapat</button></div>
+    </div>
   </div>
 
   <script>
@@ -184,20 +269,24 @@
         li.setAttribute("draggable", "true");
         li.className = "task-item";
         li.innerHTML = `
-          <div class="task-row" style="animation-delay: ${index * 0.05}s">
-            <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-            <input type="text" class="task-text" value="${escapeHtml(task.text)}" onchange="editTask(${task.id}, this.value)">
+          <div class="task-row" style="animation-delay: ${index * 0.05}s"
+               onclick="openTaskHistory('${encodeURIComponent(task.key)}')"
+               title="Geçmişi gör">
+            <div class="drag-handle" title="Drag to reorder" onclick="event.stopPropagation()">⋮⋮</div>
+            <input type="text" class="task-text" value="${escapeHtml(task.text)}"
+                   onclick="event.stopPropagation()"
+                   onchange="editTask(${task.id}, this.value)">
             <div class="status-group">
-              <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'data', this)" title="Data Status">
+              <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" onclick="event.stopPropagation(); toggleStatus(${task.id}, 'data', this)" title="Data Status">
                 ${task.data_status === "☑" ? '✓' : ''}
               </button>
             </div>
             <div class="status-group">
-              <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" onclick="toggleStatus(${task.id}, 'work', this)" title="Work Status">
+              <button class="status-btn ${task.work_status === "☑" ? 'active' : ''}" onclick="event.stopPropagation(); toggleStatus(${task.id}, 'work', this)" title="Work Status">
                 ${task.work_status === "☑" ? '✓' : ''}
               </button>
             </div>
-            <button class="delete-btn" onclick="deleteTask(${task.id})" title="Delete Task">✕</button>
+            <button class="delete-btn" onclick="event.stopPropagation(); deleteTask(${task.id})" title="Delete Task">✕</button>
           </div>
         `;
         li.addEventListener('dragstart', handleDragStart);
@@ -339,6 +428,60 @@
         loadTasks();
       }
     }
+
+    // ── Task history ──────────────────────────────────────
+    // Tasks are linked by their normalized title, so a task that recurs
+    // month after month reads as one thing with a history. The key is
+    // computed server-side and arrives with each task.
+    function fmtMonth(ym) {
+      const [y, m] = ym.split('-');
+      return `${MONTH_NAMES[parseInt(m, 10) - 1]} ${y}`;
+    }
+
+    async function openTaskHistory(encKey) {
+      const key = decodeURIComponent(encKey);
+      document.getElementById('tfOverlay').classList.add('open');
+      document.getElementById('tfRows').innerHTML = '<div class="tf-hint">Yükleniyor…</div>';
+
+      const res = await fetch(`/task-history?key=${encodeURIComponent(key)}`);
+      const { summary, months } = await res.json();
+
+      document.getElementById('tfTitle').textContent = months.length ? months[0].text : '';
+      document.getElementById('tfSum').innerHTML = summary.months
+        ? `<strong>${summary.months}</strong> ay · Data <strong>${summary.data_done}</strong> ·
+           Work <strong>${summary.work_done}</strong> · İkisi de <strong>${summary.both_done}</strong>
+           ${summary.first_month ? '· ' + fmtMonth(summary.first_month) + ' – ' + fmtMonth(summary.last_month) : ''}`
+        : 'Kayıt yok';
+
+      document.getElementById('tfRows').innerHTML = months.map(m => `
+        <div class="tf-row${m.month === currentMonth ? ' current' : ''}"
+             onclick="jumpToMonth('${m.month}')" title="Bu aya git">
+          <span class="tf-month">${fmtMonth(m.month)}</span>
+          <span class="tf-flags">
+            <span class="tf-flag${m.data_done ? ' on' : ''}">${m.data_done ? '✓' : '○'} Data</span>
+            <span class="tf-flag${m.work_done ? ' on' : ''}">${m.work_done ? '✓' : '○'} Work</span>
+          </span>
+        </div>`).join('') || '<div class="tf-hint">Kayıt yok.</div>';
+    }
+
+    function closeTaskHistory() {
+      document.getElementById('tfOverlay').classList.remove('open');
+    }
+
+    function handleTfOverlayClick(e) {
+      if (e.target === document.getElementById('tfOverlay')) closeTaskHistory();
+    }
+
+    async function jumpToMonth(ym) {
+      currentMonth = ym;
+      updateMonthUI();
+      closeTaskHistory();
+      await loadTasks();
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeTaskHistory();
+    });
 
     window.onload = async () => {
       updateMonthUI();
