@@ -18,6 +18,8 @@ from app.utils import (
     split_task_entity, set_task_parent, get_task_lineage,
     normalize_title, get_month_task_history, get_month_task_summary,
     get_year_overview, get_task_years,
+    list_month_task_entities, count_month_task_occurrences,
+    rename_month_task_entity, split_month_task,
 )
 import json
 
@@ -85,6 +87,35 @@ def year_overview():
 @main.route("/task-years", methods=["GET"])
 def task_years():
     return jsonify(get_task_years())
+
+@main.route("/task-entities", methods=["GET"])
+def task_entities():
+    return jsonify(list_month_task_entities())
+
+@main.route("/task-count", methods=["GET"])
+def task_count():
+    """Months a rename would touch, for the confirmation prompt."""
+    return jsonify({"count": count_month_task_occurrences(request.args.get("text", ""))})
+
+@main.route("/task-rename", methods=["POST"])
+def task_rename():
+    """Retitle a task across every month. Merging passes the target's title."""
+    data = request.get_json() or {}
+    old = (data.get("old_text") or "").strip()
+    new = (data.get("new_text") or "").strip()
+    if not old or not new:
+        return jsonify({"success": False, "error": "old_text and new_text required"}), 400
+    return jsonify({"success": True, "renamed": rename_month_task_entity(old, new)})
+
+@main.route("/task-split/<int:id>", methods=["POST"])
+def task_split(id):
+    """Peel one month (optionally that month onward) off under a new name."""
+    data = request.get_json() or {}
+    new = (data.get("new_text") or "").strip()
+    if not new:
+        return jsonify({"success": False, "error": "new_text required"}), 400
+    return jsonify({"success": True,
+                    "split": split_month_task(id, new, bool(data.get("include_later")))})
 
 @main.route("/months", methods=["GET"])
 def months():

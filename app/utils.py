@@ -122,6 +122,72 @@ def get_month_task_summary(key: str):
     }
 
 
+def list_month_task_entities():
+    """Every TaskFlow task, newest spelling first, for pickers."""
+    with SessionLocal() as db:
+        rows = [t for t in db.query(Task).all() if t.month]
+    rows.sort(key=lambda t: t.month)
+    agg = {}
+    for t in rows:
+        k = normalize_title(t.text)
+        if not k:
+            continue
+        e = agg.setdefault(k, {"key": k, "text": t.text, "months": 0})
+        e["months"] += 1
+        e["text"] = t.text          # later month wins, so labels stay current
+    return sorted(agg.values(), key=lambda e: e["text"].lower())
+
+def count_month_task_occurrences(text: str) -> int:
+    """How many months a rename of this task would touch."""
+    key = normalize_title(text)
+    if not key:
+        return 0
+    with SessionLocal() as db:
+        return sum(1 for t in db.query(Task).all()
+                   if t.month and normalize_title(t.text) == key)
+
+def rename_month_task_entity(old_text: str, new_text: str) -> int:
+    """Retitle this task in every month it appears.
+
+    Mirrors the daily page: the title is the identity, so renaming is a
+    re-identification and always applies to the whole task. Merging is
+    the same operation with another task's title as the target.
+    """
+    key = normalize_title(old_text)
+    new_text = (new_text or "").strip()
+    if not key or not new_text:
+        return 0
+    with SessionLocal() as db:
+        rows = [t for t in db.query(Task).all()
+                if t.month and normalize_title(t.text) == key]
+        for t in rows:
+            t.text = new_text
+        db.commit()
+        return len(rows)
+
+def split_month_task(task_id: int, new_text: str, include_later: bool = False) -> int:
+    """Peel one month (or that month onward) off under a new name.
+
+    Because renaming covers every month, carrying a task forward under a
+    new name needs its own action - the earlier months keep the old one.
+    """
+    new_text = (new_text or "").strip()
+    if not new_text:
+        return 0
+    with SessionLocal() as db:
+        src = db.get(Task, task_id)
+        if not src or not src.month:
+            return 0
+        key = normalize_title(src.text)
+        rows = ([t for t in db.query(Task).all()
+                 if t.month and normalize_title(t.text) == key and t.month >= src.month]
+                if include_later else [src])
+        for t in rows:
+            t.text = new_text
+        db.commit()
+        return len(rows)
+
+
 def get_year_overview(year: int):
     """One row per task that appeared in the year, one cell per month.
 

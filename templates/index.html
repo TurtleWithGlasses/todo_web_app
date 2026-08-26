@@ -115,6 +115,25 @@
     }
     .tf-close:hover { color: var(--text-primary); background: var(--bg-card-hover); }
 
+    .tf-acts { margin-top: 4px; }
+    .tf-act-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+    .tf-act-row select, .tf-act-row input {
+      padding: 8px 10px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-primary); font-family: 'Outfit', sans-serif; font-size: .8rem;
+      min-width: 0;
+    }
+    .tf-act-row input { flex: 1; }
+    .tf-act-row select { flex: 1; }
+    .tf-act-btn {
+      padding: 8px 13px; background: transparent;
+      border: 1px dashed var(--border); border-radius: 8px;
+      color: var(--text-secondary); font-family: 'Outfit', sans-serif;
+      font-size: .78rem; cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .tf-act-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .tf-act-note { font-size: .71rem; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
+
     /* ── Yearly overview ────────────────────────────────── */
     .yr-panel {
       background: var(--bg-secondary);
@@ -286,6 +305,7 @@
       <div class="tf-sum" id="tfSum"></div>
       <div class="tf-sec">Aylara göre geçmiş</div>
       <div class="tf-scroll"><div id="tfRows"></div></div>
+      <div class="tf-acts" id="tfActs"></div>
       <div class="tf-foot"><button class="tf-close" onclick="closeTaskHistory()">Kapat</button></div>
     </div>
   </div>
@@ -370,8 +390,9 @@
                title="Geçmişi gör">
             <div class="drag-handle" title="Drag to reorder" onclick="event.stopPropagation()">⋮⋮</div>
             <input type="text" class="task-text" value="${escapeHtml(task.text)}"
+                   data-orig="${escapeHtml(task.text)}"
                    onclick="event.stopPropagation()"
-                   onchange="editTask(${task.id}, this.value)">
+                   onchange="editTask(this)">
             <div class="status-group">
               <button class="status-btn ${task.data_status === "☑" ? 'active' : ''}" onclick="event.stopPropagation(); toggleStatus(${task.id}, 'data', this)" title="Data Status">
                 ${task.data_status === "☑" ? '✓' : ''}
@@ -486,12 +507,31 @@
       }
     }
 
-    async function editTask(id, newText) {
-      await fetch("/edit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, new_text: newText })
+    // Title is identity, so renaming re-identifies the task and applies to
+    // every month it runs in — matching the daily page. Renaming only from
+    // a point forward is a split, offered in the history panel.
+    async function editTask(el) {
+      const oldText = el.dataset.orig;
+      const newText = el.value.trim();
+      if (!newText || newText === oldText) { el.value = oldText; return; }
+
+      const { count } = await (await fetch(
+        `/task-count?text=${encodeURIComponent(oldText)}`)).json();
+      if (count > 1) {
+        const ok = confirm(
+          `"${oldText}" gorevinin ${count} ayindaki kaydi "${newText}" olarak degisecek.\n\n` +
+          `Yalnizca bu aydan itibaren degistirmek istiyorsan, gecmis panelinden "ayir" kullan.\n\n` +
+          `Devam edilsin mi?`);
+        if (!ok) { el.value = oldText; return; }
+      }
+
+      await fetch('/task-rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_text: oldText, new_text: newText }),
       });
+      el.dataset.orig = newText;
+      await loadTasks();
     }
 
     async function deleteTask(id) {
@@ -608,6 +648,8 @@
     // Tasks are linked by their normalized title, so a task that recurs
     // month after month reads as one thing with a history. The key is
     // computed server-side and arrives with each task.
+    let tfCurrent = { key: null, text: '', months: [] };
+
     function fmtMonth(ym) {
       const [y, m] = ym.split('-');
       return `${MONTH_NAMES[parseInt(m, 10) - 1]} ${y}`;
@@ -621,7 +663,8 @@
       const res = await fetch(`/task-history?key=${encodeURIComponent(key)}`);
       const { summary, months } = await res.json();
 
-      document.getElementById('tfTitle').textContent = months.length ? months[0].text : '';
+      tfCurrent = { key, text: months.length ? months[0].text : '', months };
+      document.getElementById('tfTitle').textContent = tfCurrent.text;
       document.getElementById('tfSum').innerHTML = summary.months
         ? `<strong>${summary.months}</strong> ay · Data <strong>${summary.data_done}</strong> ·
            Work <strong>${summary.work_done}</strong> · İkisi de <strong>${summary.both_done}</strong>
@@ -637,6 +680,80 @@
             <span class="tf-flag${m.work_done ? ' on' : ''}">${m.work_done ? '✓' : '○'} Work</span>
           </span>
         </div>`).join('') || '<div class="tf-hint">Kayıt yok.</div>';
+
+      renderTaskActions();
+    }
+
+    // Entity-level actions live here rather than on the row, since they
+    // affect the task across months rather than this month's record.
+    async function renderTaskActions() {
+      const el = document.getElementById('tfActs');
+      if (!tfCurrent.months.length) { el.innerHTML = ''; return; }
+
+      const others = (await (await fetch('/task-entities')).json())
+        .filter(e => e.key !== tfCurrent.key);
+
+      el.innerHTML = `
+        <div class="tf-sec">İşlemler</div>
+        <div class="tf-act-row">
+          <select id="tfSplitMonth">
+            ${tfCurrent.months.map(m =>
+              `<option value="${m.id}"${m.month === currentMonth ? ' selected' : ''}>${fmtMonth(m.month)}</option>`
+            ).join('')}
+          </select>
+          <input id="tfSplitName" placeholder="Yeni ad" />
+          <button class="tf-act-btn" onclick="doSplitForward()">Bu aydan itibaren ayır</button>
+        </div>
+        <div class="tf-act-row">
+          <select id="tfMergeTarget">
+            ${others.length
+              ? others.map(e => `<option value="${encodeURIComponent(e.key)}">${escapeHtml(e.text)} (${e.months} ay)</option>`).join('')
+              : '<option value="">Başka görev yok</option>'}
+          </select>
+          <button class="tf-act-btn" onclick="doMergeTask()">Birleştir</button>
+        </div>
+        <div class="tf-act-note">
+          Adı doğrudan değiştirmek tüm ayları etkiler. Yalnızca bir aydan
+          sonrasını değiştirmek için “ayır”ı kullan.
+        </div>`;
+    }
+
+    async function doSplitForward() {
+      const id = document.getElementById('tfSplitMonth').value;
+      const name = document.getElementById('tfSplitName').value.trim();
+      if (!id || !name) { document.getElementById('tfSplitName').focus(); return; }
+      const m = tfCurrent.months.find(x => String(x.id) === String(id));
+      if (!confirm(`${fmtMonth(m.month)} ve sonrasindaki kayitlar "${name}" adiyla ayrilacak.\n\nDevam edilsin mi?`)) return;
+
+      const res = await fetch(`/task-split/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_text: name, include_later: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.success) { alert('Ayırma başarısız.'); return; }
+      closeTaskHistory();
+      await loadTasks();
+    }
+
+    async function doMergeTask() {
+      const enc = document.getElementById('tfMergeTarget').value;
+      if (!enc) return;
+      const targetKey = decodeURIComponent(enc);
+      const all = await (await fetch('/task-entities')).json();
+      const target = all.find(e => e.key === targetKey);
+      if (!target) return;
+      if (!confirm(`"${tfCurrent.text}" gorevinin tum aylari "${target.text}" adiyla birlestirilecek.\n\nDevam edilsin mi?`)) return;
+
+      const res = await fetch('/task-rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_text: tfCurrent.text, new_text: target.text }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.success) { alert('Birleştirme başarısız.'); return; }
+      closeTaskHistory();
+      await loadTasks();
     }
 
     function closeTaskHistory() {
