@@ -122,6 +122,100 @@ def get_month_task_summary(key: str):
     }
 
 
+def get_year_overview(year: int):
+    """One row per task that appeared in the year, one cell per month.
+
+    A cell is only counted as unfinished when the task actually existed
+    that month. Everything else is reported with the reason it does not
+    apply, so a task retired mid-year stops counting from that point on
+    rather than showing as a run of misses:
+
+      done / partial / none  the task ran that month
+      future                 month is later than the current one
+      untracked              that month has no rows at all, so it was
+                             never opened - without this every task
+                             would look retired for a skipped month
+      before                 earlier than the task ever existed
+      after                  past its last appearance, i.e. retired
+      gap                    absent between its first and last months
+
+    First and last appearance are measured across all years, not just
+    this one, so a task carried in from last December is not reported
+    as starting in January.
+    """
+    months = ["%d-%02d" % (year, m) for m in range(1, 13)]
+    current = get_current_month()
+
+    with SessionLocal() as db:
+        rows = db.query(Task).all()
+
+    first, last, by_key_month, label = {}, {}, {}, {}
+    tracked = set()
+    for t in rows:
+        if not t.month:
+            continue
+        key = normalize_title(t.text)
+        if not key:
+            continue
+        first[key] = min(first.get(key, t.month), t.month)
+        last[key]  = max(last.get(key, t.month), t.month)
+        if t.month.startswith("%d-" % year):
+            tracked.add(t.month)
+            by_key_month[(key, t.month)] = t
+            label[key] = t.text          # most recent spelling wins below
+
+    # Prefer the newest spelling as the display label
+    for t in sorted((t for t in rows if t.month), key=lambda x: x.month):
+        k = normalize_title(t.text)
+        if k in label:
+            label[k] = t.text
+
+    keys = sorted({k for (k, m) in by_key_month}, key=lambda k: label.get(k, k).lower())
+
+    out = []
+    for key in keys:
+        cells, active, both, data_n, work_n = [], 0, 0, 0, 0
+        for m in months:
+            t = by_key_month.get((key, m))
+            if t is not None:
+                d = t.data_status == CHECKED
+                w = t.work_status == CHECKED
+                state = "done" if (d and w) else ("partial" if (d or w) else "none")
+                active += 1
+                both   += 1 if (d and w) else 0
+                data_n += 1 if d else 0
+                work_n += 1 if w else 0
+                cells.append({"m": m, "state": state, "data": d, "work": w})
+            elif m > current:
+                cells.append({"m": m, "state": "future"})
+            elif m not in tracked:
+                cells.append({"m": m, "state": "untracked"})
+            elif m < first.get(key, m):
+                cells.append({"m": m, "state": "before"})
+            elif m > last.get(key, m):
+                cells.append({"m": m, "state": "after"})
+            else:
+                cells.append({"m": m, "state": "gap"})
+        out.append({
+            "key": key, "text": label.get(key, key), "cells": cells,
+            "active": active, "both": both, "data": data_n, "work": work_n,
+        })
+
+    return {
+        "year": year,
+        "months": months,
+        "current_month": current,
+        "tracked": sorted(tracked),
+        "tasks": out,
+    }
+
+def get_task_years():
+    """Years that have any monthly task data, newest first."""
+    with SessionLocal() as db:
+        rows = db.query(Task.month).distinct().all()
+    return sorted({r[0][:4] for r in rows if r[0]}, reverse=True)
+
+
 # --- Setting utilities (key-value store) ---
 
 def get_setting(key: str):

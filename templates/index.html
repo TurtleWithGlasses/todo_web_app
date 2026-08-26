@@ -115,6 +115,78 @@
     }
     .tf-close:hover { color: var(--text-primary); background: var(--bg-card-hover); }
 
+    /* ── Yearly overview ────────────────────────────────── */
+    .yr-panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px;
+      width: 1080px; max-width: 96vw; max-height: 88vh;
+      display: flex; flex-direction: column;
+      transform: translateY(18px) scale(.97);
+      transition: transform .25s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .tf-overlay.open .yr-panel { transform: translateY(0) scale(1); }
+
+    .yr-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .yr-nav { display: flex; align-items: center; gap: 10px; }
+    .yr-year { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); min-width: 78px; text-align: center; }
+    .yr-arrow {
+      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-secondary); font-size: 1.05rem; cursor: pointer; transition: all .15s;
+    }
+    .yr-arrow:hover { color: var(--accent); border-color: var(--accent); }
+
+    .yr-scroll { overflow: auto; margin-top: 18px; flex: 1; min-height: 0; }
+    .yr-table { border-collapse: separate; border-spacing: 0; width: 100%; }
+    .yr-table th, .yr-table td { padding: 5px 4px; }
+    .yr-table thead th {
+      position: sticky; top: 0; z-index: 2;
+      background: var(--bg-secondary);
+      font-size: .66rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-muted);
+      text-align: center; white-space: nowrap;
+    }
+    .yr-table th.yr-name, .yr-table td.yr-name {
+      position: sticky; left: 0; z-index: 1;
+      background: var(--bg-secondary);
+      text-align: left; min-width: 190px; max-width: 240px;
+      font-size: .82rem; color: var(--text-primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .yr-table thead th.yr-name { z-index: 3; }
+    .yr-table tbody tr:hover td { background: var(--bg-card); }
+    .yr-table tbody tr:hover td.yr-name { background: var(--bg-card); }
+    .yr-table td.yr-name { cursor: pointer; }
+    .yr-table td.yr-name:hover { color: var(--accent); }
+    .yr-tot { font-size: .72rem; color: var(--text-muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+    /* Each cell is split: left half Data, right half Work */
+    .yr-cell {
+      width: 30px; height: 20px; margin: 0 auto;
+      border-radius: 5px; display: flex; overflow: hidden; gap: 1px;
+    }
+    .yr-half { flex: 1; background: rgba(120,130,145,.22); }
+    .yr-half.on { background: var(--success); }
+    .yr-cell.na {
+      background: transparent;
+      border: 1px dashed var(--border);
+      box-sizing: border-box;
+    }
+    .yr-cell.na .yr-half { background: transparent; }
+    .yr-cell.future { border-style: dotted; opacity: .5; }
+    .yr-cell.cur { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .yr-legend {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px;
+      font-size: .72rem; color: var(--text-muted);
+      padding-top: 12px; border-top: 1px solid var(--border);
+    }
+    .yr-key { display: inline-flex; align-items: center; gap: 6px; }
+    .yr-hint { color: var(--text-muted); font-size: .84rem; padding: 30px 4px; text-align: center; }
+
     .task-row { cursor: pointer; }
     .task-row .task-text,
     .task-row .status-btn,
@@ -137,6 +209,8 @@
       </div>
       <nav class="header-nav">
         <div id="themePickerWrap"></div>
+        <button class="nav-btn" onclick="openYearView()" title="Yıllık görünüm"
+                style="cursor:pointer">&#128197; Yıllık</button>
         <a href="/daily" class="nav-btn" title="Günlük İş Takibi">
           <span class="nav-dot"></span> Günlük Takip
         </a>
@@ -181,6 +255,28 @@
     </div>
 
     <ul id="taskList"></ul>
+  </div>
+
+  <!-- YEARLY OVERVIEW -->
+  <div class="tf-overlay" id="yrOverlay" onclick="handleYrOverlayClick(event)">
+    <div class="yr-panel">
+      <div class="yr-head">
+        <div class="yr-nav">
+          <button class="yr-arrow" onclick="yearPrev()">&#8249;</button>
+          <span class="yr-year" id="yrYear"></span>
+          <button class="yr-arrow" onclick="yearNext()">&#8250;</button>
+        </div>
+        <div class="yr-tot" id="yrSummary"></div>
+      </div>
+      <div class="yr-scroll" id="yrScroll"></div>
+      <div class="yr-legend">
+        <span class="yr-key"><span class="yr-cell"><span class="yr-half on"></span><span class="yr-half on"></span></span> Data + Work</span>
+        <span class="yr-key"><span class="yr-cell"><span class="yr-half on"></span><span class="yr-half"></span></span> Yalnızca biri</span>
+        <span class="yr-key"><span class="yr-cell"><span class="yr-half"></span><span class="yr-half"></span></span> Yapılmadı</span>
+        <span class="yr-key"><span class="yr-cell na"></span> Görev o ay listede değil (sayılmaz)</span>
+      </div>
+      <div class="tf-foot"><button class="tf-close" onclick="closeYearView()">Kapat</button></div>
+    </div>
   </div>
 
   <!-- TASK HISTORY PANEL -->
@@ -429,6 +525,85 @@
       }
     }
 
+    // ── Yearly overview ───────────────────────────────────
+    // A task removed part-way through the year stays on the table but
+    // stops counting once it is gone; months it never existed in, and
+    // months that were never opened, are likewise not counted.
+    let yrYear = new Date().getFullYear();
+
+    const YR_LABEL = {
+      done:      'Data + Work tamamlandı',
+      partial:   'Yalnızca biri tamamlandı',
+      none:      'Yapılmadı',
+      after:     'Görev bu aydan önce listeden çıkarılmış — sayılmıyor',
+      before:    'Görev bu ayda henüz yoktu — sayılmıyor',
+      gap:       'Görev bu ay listede değildi — sayılmıyor',
+      untracked: 'Bu ay hiç açılmamış — veri yok',
+      future:    'Gelecek ay',
+    };
+
+    function openYearView() {
+      document.getElementById('yrOverlay').classList.add('open');
+      yrYear = parseInt(currentMonth.slice(0, 4), 10);
+      loadYearView();
+    }
+    function closeYearView() { document.getElementById('yrOverlay').classList.remove('open'); }
+    function handleYrOverlayClick(e) {
+      if (e.target === document.getElementById('yrOverlay')) closeYearView();
+    }
+    function yearPrev() { yrYear--; loadYearView(); }
+    function yearNext() { yrYear++; loadYearView(); }
+
+    async function loadYearView() {
+      document.getElementById('yrYear').textContent = yrYear;
+      document.getElementById('yrScroll').innerHTML = '<div class="yr-hint">Yükleniyor…</div>';
+
+      const res = await fetch(`/year-overview?year=${yrYear}`);
+      const ov = await res.json();
+
+      if (!ov.tasks.length) {
+        document.getElementById('yrScroll').innerHTML =
+          '<div class="yr-hint">Bu yıl için kayıt yok.</div>';
+        document.getElementById('yrSummary').textContent = '';
+        return;
+      }
+
+      const totActive = ov.tasks.reduce((s, t) => s + t.active, 0);
+      const totBoth   = ov.tasks.reduce((s, t) => s + t.both, 0);
+      document.getElementById('yrSummary').innerHTML =
+        `<strong>${ov.tasks.length}</strong> görev · ${totBoth}/${totActive} ay tamamlandı`;
+
+      const head = ov.months.map(m =>
+        `<th>${MONTH_NAMES[parseInt(m.slice(5), 10) - 1].slice(0, 3)}</th>`).join('');
+
+      const body = ov.tasks.map(t => {
+        const cells = t.cells.map(c => {
+          const applies = ['done', 'partial', 'none'].includes(c.state);
+          const cls = applies
+            ? 'yr-cell'
+            : 'yr-cell na' + (c.state === 'future' ? ' future' : '');
+          const cur = c.m === ov.current_month ? ' cur' : '';
+          const halves = applies
+            ? `<span class="yr-half${c.data ? ' on' : ''}"></span><span class="yr-half${c.work ? ' on' : ''}"></span>`
+            : '';
+          return `<td title="${escapeHtml(YR_LABEL[c.state] || c.state)}">
+                    <span class="${cls}${cur}">${halves}</span></td>`;
+        }).join('');
+        return `<tr>
+            <td class="yr-name" title="${escapeHtml(t.text)}"
+                onclick="openTaskHistory('${encodeURIComponent(t.key)}')">${escapeHtml(t.text)}</td>
+            ${cells}
+            <td class="yr-tot">${t.both}/${t.active}</td>
+          </tr>`;
+      }).join('');
+
+      document.getElementById('yrScroll').innerHTML = `
+        <table class="yr-table">
+          <thead><tr><th class="yr-name">Görev</th>${head}<th class="yr-tot">Toplam</th></tr></thead>
+          <tbody>${body}</tbody>
+        </table>`;
+    }
+
     // ── Task history ──────────────────────────────────────
     // Tasks are linked by their normalized title, so a task that recurs
     // month after month reads as one thing with a history. The key is
@@ -480,7 +655,7 @@
     }
 
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') closeTaskHistory();
+      if (e.key === 'Escape') { closeTaskHistory(); closeYearView(); }
     });
 
     window.onload = async () => {

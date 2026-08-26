@@ -17,6 +17,7 @@ from app.utils import (
     get_daily_task, count_task_occurrences, rename_task_entity,
     split_task_entity, set_task_parent, get_task_lineage,
     normalize_title, get_month_task_history, get_month_task_summary,
+    get_year_overview, get_task_years,
 )
 import json
 
@@ -73,6 +74,17 @@ def task_history():
         "summary": get_month_task_summary(key),
         "months":  get_month_task_history(key),
     })
+
+@main.route("/year-overview", methods=["GET"])
+def year_overview():
+    """Every task that ran in a year, month by month."""
+    from datetime import date as _d
+    year = request.args.get("year", type=int) or _d.today().year
+    return jsonify(get_year_overview(year))
+
+@main.route("/task-years", methods=["GET"])
+def task_years():
+    return jsonify(get_task_years())
 
 @main.route("/months", methods=["GET"])
 def months():
