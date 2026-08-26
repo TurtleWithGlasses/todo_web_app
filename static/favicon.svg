@@ -1,15 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Task app favicon">
-  <defs>
-    <linearGradient id="fv-bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#4338CA"/>
-      <stop offset="0.52" stop-color="#6D28D9"/>
-      <stop offset="1" stop-color="#0EA5E9"/>
-    </linearGradient>
-  </defs>
-  <rect width="32" height="32" rx="7" fill="url(#fv-bg)"/>
-  <path d="M8.5 16.6 L13.5 21.6 L23.5 11.6" fill="none" stroke="#FFFFFF" stroke-width="3.6"
-        stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="8.5" cy="16.6" r="2.8" fill="#FFFFFF"/>
-  <circle cx="23.5" cy="11.6" r="2.8" fill="#FFFFFF"/>
-  <circle cx="23.5" cy="11.6" r="1.2" fill="#06B6D4"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b2ff7"></stop><stop offset=".5" stop-color="#6d3ff0"></stop><stop offset="1" stop-color="#2196f3"></stop></linearGradient></defs><rect width="512" height="512" rx="114" fill="url(#g)"></rect><g fill="none" stroke="#fff" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"><path d="M124 264 L216 366 L302 284"></path><path d="M302 284 L388 196" stroke-opacity=".45" stroke-dasharray="8 52"></path></g><circle cx="124" cy="264" r="36" fill="#fff"></circle><circle cx="388" cy="196" r="38" fill="#fff"></circle><circle cx="388" cy="196" r="17" fill="#12d3ee"></circle></svg>
