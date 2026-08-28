@@ -1610,6 +1610,37 @@
     .d-wk-summary strong { color: var(--text-primary); font-weight: 700; }
 
     /* 7 day columns; scrolls sideways rather than crushing them */
+    .d-wk-filter {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-top: 12px; padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .d-wk-fchip {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 11px 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      font-size: .76rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      transition: all .15s;
+    }
+    .d-wk-fchip:hover { border-color: var(--da); }
+    .d-wk-fchip.on { color: var(--text-primary); border-color: var(--wk-fc, var(--da)); }
+    .d-wk-fchip input { accent-color: var(--wk-fc, var(--da)); width: 14px; height: 14px; cursor: pointer; margin: 0; }
+    .d-wk-fdot { width: 9px; height: 9px; border-radius: 50%; background: var(--wk-fc, #64748b); flex-shrink: 0; opacity: .35; }
+    .d-wk-fchip.on .d-wk-fdot { opacity: 1; }
+    .d-wk-fall {
+      padding: 5px 12px; border-radius: 999px;
+      border: 1px dashed var(--border); background: transparent;
+      color: var(--text-muted); font-family: 'Outfit', sans-serif;
+      font-size: .74rem; transition: all .15s;
+    }
+    .d-wk-fall:hover { color: var(--da); border-color: var(--da); }
+    .d-wk-fnote { font-size: .72rem; color: var(--text-muted); margin-left: auto; }
+
     .d-wk-scroll { overflow-x: auto; padding: 4px 0 8px; }
     .d-wk-grid {
       display: grid;
@@ -2345,6 +2376,8 @@
         </div>
         <div class="d-wk-summary" id="weekSummary"></div>
       </div>
+
+      <div class="d-wk-filter" id="weekFilter"></div>
 
       <div class="d-wk-scroll">
         <div class="d-wk-grid" id="weekGrid"></div>
@@ -4202,6 +4235,15 @@
     function weekNext()  { weekStart.setDate(weekStart.getDate() + 7); loadWeekView(); }
     function weekToday() { weekStart = mondayOf(new Date()); loadWeekView(); }
 
+    // The week's tasks are held in memory so toggling a category filter
+    // re-renders instantly instead of refetching.
+    let weekDays   = [];
+    let weekTasks  = [];
+    // Hidden categories rather than selected ones, so a category added
+    // later shows up by default instead of being silently filtered out.
+    let weekCatOff = null;
+    const WK_UNCAT = '__uncat__';
+
     async function loadWeekView() {
       const days = [];
       for (let i = 0; i < 7; i++) {
@@ -4213,10 +4255,72 @@
       // date range with all fields, sorted by date then time.
       const res  = await fetch(`/daily/analysis?from=${isoDate(days[0])}&to=${isoDate(days[6])}`);
       const data = await res.json();
-      renderWeekGrid(days, data.tasks || []);
+      weekDays  = days;
+      weekTasks = data.tasks || [];
+      ensureWeekCatOff();
+      renderWeekFilter();
+      renderWeekGrid();
     }
 
-    function renderWeekGrid(days, tasks) {
+    function ensureWeekCatOff() {
+      if (weekCatOff !== null) return;
+      try {
+        const saved = JSON.parse(localStorage.getItem('weekCatHidden'));
+        weekCatOff = new Set(Array.isArray(saved) ? saved : []);
+      } catch (e) { weekCatOff = new Set(); }
+    }
+
+    function weekCatOptions() {
+      const names = allCategories.map(c => c.name).sort((a, b) => a.localeCompare(b, 'tr'));
+      // Only offer the uncategorised bucket when this week actually has some
+      if (weekTasks.some(t => !t.category)) names.push(WK_UNCAT);
+      return names;
+    }
+
+    function weekCatLabel(n) { return n === WK_UNCAT ? 'Kategorisiz' : n; }
+    function weekCatColour(n) { return n === WK_UNCAT ? '#64748b' : catColorOf(n); }
+
+    function renderWeekFilter() {
+      const names = weekCatOptions();
+      const shown = names.filter(n => !weekCatOff.has(n)).length;
+      document.getElementById('weekFilter').innerHTML =
+        names.map(n => {
+          const on = !weekCatOff.has(n);
+          return `<label class="d-wk-fchip${on ? ' on' : ''}" style="--wk-fc:${weekCatColour(n)}">
+                    <input type="checkbox" ${on ? 'checked' : ''}
+                           onchange="toggleWeekCat('${encodeURIComponent(n)}')">
+                    <span class="d-wk-fdot"></span>${escHtml(weekCatLabel(n))}
+                  </label>`;
+        }).join('') +
+        `<button class="d-wk-fall" onclick="setAllWeekCats(${shown === names.length ? 'false' : 'true'})">
+           ${shown === names.length ? 'Hiçbiri' : 'Tümü'}
+         </button>
+         <span class="d-wk-fnote">${shown}/${names.length} kategori</span>`;
+    }
+
+    function toggleWeekCat(encName) {
+      const n = decodeURIComponent(encName);
+      if (weekCatOff.has(n)) weekCatOff.delete(n); else weekCatOff.add(n);
+      localStorage.setItem('weekCatHidden', JSON.stringify([...weekCatOff]));
+      renderWeekFilter();
+      renderWeekGrid();
+    }
+
+    function setAllWeekCats(on) {
+      weekCatOff = on ? new Set() : new Set(weekCatOptions());
+      localStorage.setItem('weekCatHidden', JSON.stringify([...weekCatOff]));
+      renderWeekFilter();
+      renderWeekGrid();
+    }
+
+    function weekVisibleTasks() {
+      return weekTasks.filter(t => !weekCatOff.has(t.category || WK_UNCAT));
+    }
+
+    function renderWeekGrid() {
+      const days  = weekDays;
+      const tasks = weekVisibleTasks();
+      if (!days.length) return;
       const byDate = new Map();
       tasks.forEach(t => {
         if (!byDate.has(t.date)) byDate.set(t.date, []);
@@ -4235,9 +4339,16 @@
 
       const total = tasks.length;
       const done  = tasks.filter(t => t.status === 'tamamlandı').length;
-      document.getElementById('weekSummary').innerHTML = total
-        ? `Bu hafta <strong>${done}/${total}</strong> görev tamamlandı`
-        : 'Bu hafta görev yok';
+      const hidden = weekTasks.length - total;
+      const sumEl = document.getElementById('weekSummary');
+      if (!weekTasks.length) {
+        sumEl.textContent = 'Bu hafta görev yok';
+      } else if (!total) {
+        sumEl.innerHTML = `Seçili kategorilerde görev yok · <strong>${hidden}</strong> görev gizli`;
+      } else {
+        sumEl.innerHTML = `Bu hafta <strong>${done}/${total}</strong> görev tamamlandı` +
+          (hidden ? ` · <strong>${hidden}</strong> görev filtrelendi` : '');
+      }
 
       const todayIso = isoDate(new Date());
       const DOW = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
