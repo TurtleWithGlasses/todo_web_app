@@ -4739,22 +4739,139 @@
       }
     }
 
+    // The SheetJS community build silently drops every cell style, so the
+    // styled export uses ExcelJS instead - same client-side approach, and
+    // still a real .xlsx rather than an HTML table Excel merely opens.
+    const XL_BRAND  = '6D3FF0';   // the app's own purple
+    const XL_TITLE  = '4C1D95';
+    const XL_BAND   = 'F5F3FF';
+    const XL_BORDER = 'E2E8F0';
+    const XL_MUTED  = '64748B';
+
+    function xlArgb(hex) { return 'FF' + String(hex).replace('#', '').toUpperCase(); }
+
+    // Mix a colour toward white, so a status cell can carry a readable
+    // tint of the same colour its text uses.
+    function xlTint(hex, amt) {
+      const n = parseInt(String(hex).replace('#', ''), 16);
+      const mix = c => Math.round(c + (255 - c) * amt);
+      return 'FF' + [mix((n >> 16) & 255), mix((n >> 8) & 255), mix(n & 255)]
+        .map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
     async function exportExcel() {
-      await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
-      const rows = getSortedAnalysisRows().map(t => [
-        fmtAnalysisDate(t.date),
-        t.title,
-        t.description || '',
-        t.time || '',
-        t.category || '',
-        PR_TEXT[t.priority] || t.priority,
-        STATUS_TEXT[t.status] || t.status,
-      ]);
-      const ws = XLSX.utils.aoa_to_sheet([EXPORT_HEADERS, ...rows]);
-      ws['!cols'] = [{wch:14},{wch:30},{wch:44},{wch:7},{wch:18},{wch:9},{wch:12}];
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Görev Listesi');
-      XLSX.writeFile(wb, exportFilename() + '.xlsx');
+      await loadScript('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js');
+      const rows = getSortedAnalysisRows();
+      const done = rows.filter(t => t.status === 'tamamlandı').length;
+      const LAST = 'G';
+      const HEAD_ROW = 5;
+
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Günlük İş Takibi';
+      wb.created = new Date();
+
+      const ws = wb.addWorksheet('Görev Listesi', {
+        views: [{ state: 'frozen', ySplit: HEAD_ROW }],
+        pageSetup: {
+          orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+          printTitlesRow: `${HEAD_ROW}:${HEAD_ROW}`,
+          margins: { left: .4, right: .4, top: .6, bottom: .6, header: .3, footer: .3 },
+        },
+      });
+      ws.columns = [
+        { width: 13 }, { width: 34 }, { width: 46 },
+        { width: 8 },  { width: 20 }, { width: 10 }, { width: 13 },
+      ];
+
+      // Title block
+      ws.mergeCells(`A1:${LAST}1`);
+      const c1 = ws.getCell('A1');
+      c1.value     = 'Görev Listesi';
+      c1.font      = { size: 16, bold: true, color: { argb: xlArgb(XL_TITLE) } };
+      c1.alignment = { vertical: 'middle' };
+      ws.getRow(1).height = 26;
+
+      ws.mergeCells(`A2:${LAST}2`);
+      const c2 = ws.getCell('A2');
+      c2.value = exportRangeLabel();
+      c2.font  = { size: 10, color: { argb: xlArgb(XL_MUTED) } };
+
+      ws.mergeCells(`A3:${LAST}3`);
+      const pct = rows.length ? Math.round(done / rows.length * 100) : 0;
+      const c3 = ws.getCell('A3');
+      c3.value = `${rows.length} görev · ${done} tamamlandı (%${pct})`;
+      c3.font  = { size: 10, bold: true, color: { argb: xlArgb(XL_BRAND) } };
+
+      ws.getRow(4).height = 6;
+
+      // Header
+      const head = ws.getRow(HEAD_ROW);
+      EXPORT_HEADERS.forEach((h, i) => {
+        const c = head.getCell(i + 1);
+        c.value     = h;
+        c.font      = { bold: true, size: 10.5, color: { argb: 'FFFFFFFF' } };
+        c.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: xlArgb(XL_BRAND) } };
+        c.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      head.height = 22;
+
+      // Data
+      const thin = { style: 'thin', color: { argb: xlArgb(XL_BORDER) } };
+      rows.forEach((t, i) => {
+        const r = ws.addRow([
+          // A real date, not the formatted string: text dates sort
+          // alphabetically, which puts "10 Ağu" before "8 Ağu".
+          t.date ? new Date(t.date + 'T00:00:00Z') : '',   // UTC: local
+          // midnight in a UTC+N zone serialises to the previous day
+          t.title,
+          t.description || '',
+          t.time || '',
+          t.category || '',
+          PR_TEXT[t.priority] || t.priority,
+          STATUS_TEXT[t.status] || t.status,
+        ]);
+        r.height = 17;
+        const band = i % 2 === 1;
+        r.eachCell({ includeEmpty: true }, c => {
+          c.border    = { top: thin, left: thin, bottom: thin, right: thin };
+          c.alignment = { vertical: 'middle' };
+          if (band) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: xlArgb(XL_BAND) } };
+        });
+
+        const mid = { vertical: 'middle', horizontal: 'center' };
+        r.getCell(1).numFmt    = 'd mmm yyyy';
+        r.getCell(1).alignment = mid;
+        r.getCell(2).font      = { bold: true };
+        r.getCell(3).alignment = { vertical: 'top', wrapText: true };
+        r.getCell(4).alignment = mid;
+        if (t.category) {
+          r.getCell(5).font = { bold: true, color: { argb: xlArgb(catColorOf(t.category)) } };
+        }
+        r.getCell(6).font      = { bold: true, color: { argb: xlArgb(PR_COLOR[t.priority] || '#475569') } };
+        r.getCell(6).alignment = mid;
+
+        const sc = STATUS_COLOR[t.status] || '#475569';
+        r.getCell(7).font      = { bold: true, color: { argb: xlArgb(sc) } };
+        r.getCell(7).alignment = mid;
+        r.getCell(7).fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: xlTint(sc, .87) } };
+      });
+
+      if (rows.length) ws.autoFilter = `A${HEAD_ROW}:${LAST}${HEAD_ROW + rows.length}`;
+
+      // Totals
+      const tot = ws.addRow(['', `Toplam ${rows.length} görev`, '', '', '', '', `${done} tamamlandı`]);
+      tot.height = 19;
+      tot.eachCell({ includeEmpty: true }, c => {
+        c.font      = { bold: true, size: 10, color: { argb: xlArgb(XL_TITLE) } };
+        c.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: xlArgb(XL_BAND) } };
+        c.border    = { top: { style: 'medium', color: { argb: xlArgb(XL_BRAND) } } };
+        c.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+
+      const buf = await wb.xlsx.writeBuffer();
+      downloadBlob(new Blob([buf], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }), exportFilename() + '.xlsx');
     }
 
     function exportWord() {
