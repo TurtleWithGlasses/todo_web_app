@@ -213,6 +213,41 @@
     .task-row .drag-handle { cursor: auto; }
     .task-row .status-btn,
     .task-row .delete-btn { cursor: pointer; }
+
+    /* ── Mobile ───────────────────────────────── */
+    @media (max-width: 600px) {
+      .month-nav-bar { gap: 8px; margin: 14px 0 6px; }
+      .month-label   { font-size: .98rem; min-width: 0; flex: 1; }
+      .month-nav-btn { width: 42px; height: 42px; }
+
+      /* Header buttons keep their glyph and drop the words */
+      .nav-label { display: none; }
+
+      /* Panels become near-full-width sheets */
+      .tf-overlay { padding: 8px; }
+      .tf-panel, .yr-panel {
+        width: 100%; max-width: 100%; padding: 18px 14px; border-radius: 16px;
+      }
+      .tf-month { min-width: 96px; font-size: .8rem; }
+      .tf-flag  { padding: 3px 8px; font-size: .68rem; }
+
+      /* Each control on its own line instead of three squeezed across */
+      .tf-act-row { flex-direction: column; align-items: stretch; }
+      .tf-act-row select,
+      .tf-act-row input,
+      .tf-act-btn { width: 100%; min-height: 44px; }
+
+      /* The year grid keeps scrolling sideways, but the task column
+         stays pinned so a row is still identifiable mid-scroll. */
+      .yr-table th.yr-name, .yr-table td.yr-name { min-width: 132px; max-width: 150px; font-size: .76rem; }
+      .yr-head { gap: 10px; }
+      .yr-legend { gap: 10px; font-size: .68rem; }
+      .tf-close { min-height: 44px; }
+
+      /* Header and year-nav buttons were ~25-31px tall */
+      .nav-btn  { min-height: 40px; padding: 9px 12px; }
+      .yr-arrow { width: 40px; height: 40px; }
+    }
   </style>
 </head>
 <body>
@@ -229,9 +264,9 @@
       <nav class="header-nav">
         <div id="themePickerWrap"></div>
         <button class="nav-btn" onclick="openYearView()" title="Yıllık görünüm"
-                style="cursor:pointer">&#128197; Yıllık</button>
+                style="cursor:pointer">&#128197; <span class="nav-label">Yıllık</span></button>
         <a href="/daily" class="nav-btn" title="Günlük İş Takibi">
-          <span class="nav-dot"></span> Günlük Takip
+          <span class="nav-dot"></span>⏱<span class="nav-label">&nbsp;Günlük Takip</span>
         </a>
       </nav>
     </header>

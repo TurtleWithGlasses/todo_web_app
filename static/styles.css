@@ -523,24 +523,51 @@ button {
 .column-headers .delete-col { width: 42px; }
 
 /* Responsive */
+@media (max-width: 720px) {
+  body { padding: 22px 14px; }
+
+  /* Title over nav, both full width, rather than three items
+     fighting for one row */
+  header { flex-wrap: wrap; gap: 12px; margin-bottom: 26px; }
+  .header-spacer { display: none; }
+  .header-title  { order: 1; flex: 1 1 100%; }
+  .header-nav    { order: 2; flex: 1 1 100%; justify-content: center; flex-wrap: wrap; }
+
+  h1 { font-size: 1.9rem; }
+}
+
 @media (max-width: 600px) {
-  h1 { font-size: 1.8rem; }
-  
-  .input-section {
-    flex-direction: column;
-  }
-  
-  .task-row {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  
-  .task-text {
-    width: 100%;
-    flex: none;
-  }
-  
-  .column-headers {
-    display: none;
-  }
+  body { padding: 18px 12px; }
+  h1 { font-size: 1.55rem; }
+  .subtitle   { font-size: .8rem; }
+  .brand-mark { width: 34px; height: 34px; }
+  .brand-row  { gap: 9px; }
+
+  .input-section { flex-direction: column; }
+  .input-section input,
+  .input-section button { width: 100%; min-height: 46px; }
+
+  /* Reordering is HTML5 drag-and-drop, which touch browsers never
+     fire, so the handle cannot work here. Its width is better spent
+     on the task text. */
+  .drag-handle,
+  .column-headers .drag-col { display: none; }
+
+  /* The headers stay: nothing else labels the two checkboxes, so
+     hiding them leaves two unexplained boxes on the row. */
+  /* Mirror the row's box exactly, or the labels sit a column to the
+     left of the checkboxes they name. */
+  .column-headers { font-size: .58rem; padding: 0 10px 8px; gap: 6px; }
+  .column-headers .status-col,
+  .column-headers .delete-col { width: 40px; }
+
+  .task-row  { gap: 6px; padding: 10px 10px; }
+  .task-text { font-size: .92rem; min-width: 0; }
+
+  /* Comfortable thumb targets */
+  .status-btn, .delete-btn { width: 40px; height: 40px; }
+  .btn-primary, .btn-secondary { min-height: 46px; }
+
+  .stats-bar  { gap: 8px; }
+  .stat-value { font-size: 1.4rem; }
 }

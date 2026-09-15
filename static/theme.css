@@ -102,3 +102,11 @@
 .theme-swatch-btn.active .theme-swatch {
   box-shadow: 0 0 0 2px #11151c, 0 0 0 4px #ffffff;
 }
+
+
+/* On a phone the header has no room for the word; the swatch dot
+   still says what the button does. */
+@media (max-width: 600px) {
+  .theme-btn-label { display: none; }
+  .theme-btn { min-width: 40px; min-height: 40px; justify-content: center; }
+}

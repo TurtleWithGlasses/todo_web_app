@@ -68,7 +68,7 @@
     btn.type = 'button';
     btn.className = 'theme-btn';
     btn.title = 'Görünümü özelleştir';
-    btn.innerHTML = '<span class="theme-btn-dot"></span> Görünüm';
+    btn.innerHTML = '<span class="theme-btn-dot"></span> <span class="theme-btn-label">Görünüm</span>';
 
     const pop = document.createElement('div');
     pop.className = 'theme-popover';

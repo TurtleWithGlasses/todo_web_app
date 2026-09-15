@@ -2040,11 +2040,136 @@
     .d-at-export.pdf:hover:not(:disabled)   { background: rgba(239,68,68,.2); }
 
     /* Responsive */
+    /* ── MOBILE ────────────────────────────────── */
+
+    /* These three only exist once the layout collapses */
+    .d-menu-btn     { display: none; }
+    .d-drawer-scrim { display: none; }
+    .d-fab          { display: none; }
+
     @media (max-width: 960px) {
+      body { height: auto; min-height: 100vh; overflow: auto; }
+
       .d-layout { grid-template-columns: 1fr; overflow: visible; }
-      body { overflow: auto; height: auto; }
-      .d-right { border-left: none; border-top: 1px solid var(--border); }
-      .d-left  { border-right: none; border-bottom: 1px solid var(--border); }
+      .d-center { order: 1; overflow: visible; }
+      .d-right  { order: 2; overflow: visible;
+                  border-left: none; border-top: 1px solid var(--border); }
+
+      /* Filters slide over rather than stacking on top: stacked, the
+         task list started a full screen down, below every filter. */
+      .d-left {
+        position: fixed; top: 0; left: 0; bottom: 0;
+        width: 272px; max-width: 82vw;
+        z-index: 1200;
+        background: var(--bg-secondary);
+        border-right: 1px solid var(--border);
+        border-bottom: none;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        overflow-y: auto;
+        box-shadow: 0 0 44px rgba(0,0,0,.55);
+      }
+      body.d-drawer-open .d-left { transform: translateX(0); }
+
+      .d-drawer-scrim {
+        display: block;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 1150;
+        opacity: 0; pointer-events: none;
+        transition: opacity .25s;
+      }
+      body.d-drawer-open .d-drawer-scrim { opacity: 1; pointer-events: auto; }
+
+      .d-menu-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 40px; min-height: 40px; font-size: 1.25rem;
+      }
+
+      /* The add button lives inside the drawer, so surface it here too —
+         adding a task should not be hidden behind a menu. */
+      .d-fab {
+        display: flex; align-items: center; justify-content: center;
+        position: fixed; right: 18px; bottom: 18px;
+        width: 56px; height: 56px; border-radius: 50%;
+        border: none; color: #fff; font-size: 1.9rem; line-height: 1;
+        background: linear-gradient(135deg, var(--da) 0%, var(--da-dim) 100%);
+        box-shadow: 0 8px 26px rgba(0,0,0,.45);
+        z-index: 900;
+      }
+      .d-fab:active { transform: scale(.94); }
+    }
+
+    @media (max-width: 600px) {
+      .d-header       { padding: 0 10px; gap: 6px; }
+      .d-header-left  { gap: 8px; min-width: 0; }
+      .d-header-right { gap: 5px; }
+      .d-header h1    { font-size: .72rem; letter-spacing: .05em;
+                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .d-brand-mark   { width: 22px; height: 22px; }
+
+      /* Five labelled buttons do not fit at 390px — keep the glyphs */
+      .d-btn-label { display: none; }
+      .d-icon-btn  { padding: 10px; min-height: 40px; gap: 0; }
+
+      .d-date-bar       { gap: 2px; padding: 0 4px; }
+      .d-date-arrow     { padding: 8px 12px; min-width: 44px; min-height: 40px; }
+      #currentDateLabel { min-width: 0; flex: 1; font-size: .84rem; }
+
+      .d-center { padding: 14px 12px; }
+      .d-right  { padding: 18px 14px; }
+
+      /* Modals become near-full-width sheets */
+      .d-overlay { padding: 8px; }
+      .d-modal, .d-search-modal, .d-week-modal, .d-analysis-modal {
+        width: 100%; max-width: 100%; padding: 18px 15px; border-radius: 16px;
+      }
+      .d-form-row { grid-template-columns: 1fr; gap: 10px; }
+      .d-modal-foot { flex-wrap: wrap; }
+
+      /* Comfortable tap targets */
+      .d-fi, .d-fs, .d-btn-save, .d-btn-cancel { min-height: 44px; }
+      .d-add-btn { min-height: 48px; }
+
+      /* Still scrolls sideways, but more than one day shows at a time */
+      .d-wk-grid { grid-template-columns: repeat(7, minmax(126px, 1fr)); }
+
+      /* Week header ran 403px wide inside a 375px phone */
+      .d-wk-top { flex-wrap: wrap; gap: 10px; }
+      .d-wk-nav { flex-wrap: wrap; gap: 6px; }
+      .d-wk-range { font-size: .9rem; }
+      .d-wk-summary { margin-left: 0; flex-basis: 100%; }
+
+      /* Anything under ~40px is hard to hit with a thumb */
+      .d-icon-btn      { min-width: 40px; justify-content: center; }
+      .d-cal-nav       { width: 34px; height: 34px; }
+      .d-cat-edit-btn  { min-width: 32px; min-height: 32px; }
+      .d-cat-pill      { min-height: 36px; }
+      .d-wk-today-btn  { min-height: 38px; }
+      .d-prow          { min-height: 40px; }
+      .d-wk-fchip      { min-height: 36px; }
+
+      /* Card controls, scoped to the main list so the compact cards in
+         the week grid keep their small pills. */
+      #dailyTaskList .d-status-pill { min-height: 34px; padding: 7px 13px; }
+      #dailyTaskList .d-repeat-btn  { min-width: 34px; min-height: 34px; }
+      .d-more-btn    { min-width: 36px; min-height: 36px; }
+      .d-tmode       { min-height: 38px; }
+      .d-pomo-reset  { min-width: 36px; min-height: 36px; }
+      .d-notif-btn   { min-height: 38px; }
+      .d-tp-btn      { min-height: 40px; }
+      .d-analysis-shortcut { min-height: 36px; }
+
+      /* Catch remaining pills, but leave the week grid's minis alone */
+      .d-status-pill { min-height: 32px; }
+      .d-wk-grid .d-status-pill { min-height: 0; }
+      .d-status-pill:not(.d-wk-grid *) { min-width: 34px; }
+      .d-rep-cal-nav { min-width: 32px; min-height: 32px; }
+    }
+
+    /* Hover tooltips latch open on touch and cannot be dismissed */
+    @media (hover: none) {
+      .d-fr-tooltip, .d-bar-tooltip, .d-cal-tooltip { display: none !important; }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -2054,17 +2179,17 @@
   <!-- HEADER -->
   <header class="d-header">
     <div class="d-header-left">
-      <button class="d-menu-btn">&#9776;</button>
+      <button class="d-menu-btn" onclick="toggleDrawer()" aria-label="Filtreler">&#9776;</button>
       <img src="/static/favicon.svg" alt="" class="d-brand-mark">
       <h1>Günlük İş Takibi</h1>
     </div>
     <div class="d-header-right">
-      <button class="d-icon-btn" onclick="openSearch()" title="Görev ara">&#128269; Ara</button>
-      <button class="d-icon-btn" onclick="openWeekView()" title="Haftalık takvim">&#128197; Hafta</button>
-      <button class="d-icon-btn" onclick="openAnalysis()" title="Dönem analizi">📊 Analiz</button>
+      <button class="d-icon-btn" onclick="openSearch()" title="Görev ara">&#128269; <span class="d-btn-label">Ara</span></button>
+      <button class="d-icon-btn" onclick="openWeekView()" title="Haftalık takvim">&#128197; <span class="d-btn-label">Hafta</span></button>
+      <button class="d-icon-btn" onclick="openAnalysis()" title="Dönem analizi">📊 <span class="d-btn-label">Analiz</span></button>
       <div id="themePickerWrap"></div>
       <a href="/" class="d-icon-btn" title="TaskFlow — Görev Listesi">
-        <span class="nav-dot"></span> TaskFlow
+        <span class="nav-dot"></span>📋<span class="d-btn-label">&nbsp;TaskFlow</span>
       </a>
     </div>
   </header>
@@ -2098,6 +2223,8 @@
   </div>
 
   <!-- 3-COLUMN LAYOUT -->
+  <div class="d-drawer-scrim" onclick="closeDrawer()"></div>
+
   <div class="d-layout">
 
     <!-- LEFT: Filters -->
@@ -2240,6 +2367,8 @@
     </aside>
 
   </div>
+
+  <button class="d-fab" onclick="openModal()" aria-label="Yeni görev ekle">+</button>
 
   <!-- ADD TASK MODAL -->
   <div class="d-overlay" id="overlay">
@@ -3303,7 +3432,7 @@
 
     // ── Keyboard shortcuts ────────────────────────────────
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeWeekView(); closeSearch(); closeTaskPanel(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); }
+      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeWeekView(); closeSearch(); closeTaskPanel(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); closeDrawer(); }
       if (e.key === 'Enter' && document.getElementById('overlay').classList.contains('open')) {
         const tag = document.activeElement.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -3972,6 +4101,18 @@
       closeTaskPanel();
       await deleteTask(id);
     }
+
+    // ── Filter drawer (mobile only) ──────────────────
+    // The left panel is a fixed slide-over below 960px. Above that it
+    // is an ordinary column and the class is simply never applied.
+    function toggleDrawer() { document.body.classList.toggle('d-drawer-open'); }
+    function closeDrawer()  { document.body.classList.remove('d-drawer-open'); }
+
+    // Picking a filter should reveal the list it just filtered
+    document.addEventListener('click', e => {
+      if (!document.body.classList.contains('d-drawer-open')) return;
+      if (e.target.closest('.d-cat-pill, .d-prow, .d-add-btn')) closeDrawer();
+    });
 
     // ── Task search (entities grouped by normalized title) ──
     let srchTimer    = null;
