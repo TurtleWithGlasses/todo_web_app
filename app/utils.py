@@ -282,6 +282,41 @@ def get_task_years():
     return sorted({r[0][:4] for r in rows if r[0]}, reverse=True)
 
 
+# --- Overdue daily tasks ---
+
+DAILY_DONE = "tamamlandı"
+
+def get_overdue_daily(before: str, limit: int = 400):
+    """Unfinished daily tasks dated strictly before `before`.
+
+    Future dates are excluded deliberately. Repeats are materialised a
+    long way ahead, so counting them would report a backlog of hundreds
+    that nobody is actually behind on. Today is excluded too: the day
+    is not over, so its tasks are not late yet.
+
+    The count is of everything overdue; the returned rows are capped so
+    a long backlog cannot build a huge payload.
+    """
+    if not before:
+        return {"count": 0, "tasks": [], "truncated": False}
+    with SessionLocal() as db:
+        q = (db.query(DailyTask)
+               .filter(DailyTask.date != "",
+                       DailyTask.date < before,
+                       DailyTask.status != DAILY_DONE))
+        count = q.count()
+        rows = (q.order_by(DailyTask.date.desc(), DailyTask.time)
+                 .limit(limit).all())
+    return {
+        "count": count,
+        "truncated": count > len(rows),
+        "tasks": [{
+            "id": t.id, "title": t.title, "date": t.date,
+            "time": t.time or "", "category": t.category or "",
+            "priority": t.priority, "status": t.status,
+        } for t in rows],
+    }
+
 # --- Setting utilities (key-value store) ---
 
 def get_setting(key: str):

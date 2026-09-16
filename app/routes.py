@@ -18,6 +18,7 @@ from app.utils import (
     split_task_entity, set_task_parent, get_task_lineage,
     normalize_title, get_month_task_history, get_month_task_summary,
     get_year_overview, get_task_years,
+    get_overdue_daily,
     list_month_task_entities, count_month_task_occurrences,
     rename_month_task_entity, split_month_task,
 )
@@ -409,6 +410,19 @@ def timer_state_get():
 def timer_state_set():
     set_setting("pomodoro_state", json.dumps(request.get_json() or {}))
     return jsonify({"success": True})
+
+@main.route("/daily/overdue", methods=["GET"])
+def daily_overdue():
+    """Unfinished tasks from dates before the client's today.
+
+    The date comes from the browser rather than the server so the cutoff
+    matches the user's own day, not the host's timezone.
+    """
+    before = request.args.get("before", "")
+    if not before:
+        from datetime import date as _d
+        before = _d.today().isoformat()
+    return jsonify(get_overdue_daily(before))
 
 @main.route("/daily/stats", methods=["GET"])
 def daily_stats():

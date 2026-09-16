@@ -214,6 +214,63 @@
     }
 
     /* ── DATE NAV ─────────────────────────────────────────── */
+    /* ── OVERDUE BADGE ──────────────────────────── */
+    .d-overdue {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 5px;
+      min-width: 36px; height: 34px; padding: 0 11px;
+      border-radius: 999px;
+      background: #dc2626;
+      border: 1px solid #f05252;
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-size: .92rem; font-weight: 700; line-height: 1;
+      font-variant-numeric: tabular-nums;
+      box-shadow: 0 2px 10px rgba(220, 38, 38, .45);
+      transition: transform .15s, box-shadow .15s, background .15s;
+    }
+    .d-overdue:hover {
+      background: #ef4444;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(220, 38, 38, .65);
+    }
+    /* [hidden] loses to the display above unless it is stated again */
+    .d-overdue[hidden] { display: none; }
+    .d-overdue-bell { font-size: .8rem; line-height: 1; }
+
+    .d-od-sum {
+      font-size: .8rem; color: var(--text-muted);
+      margin: -4px 0 14px;
+    }
+    .d-od-sum strong { color: #f05252; }
+    .d-od-list { max-height: 54vh; overflow-y: auto; margin: 0 -4px; }
+    .d-od-day {
+      font-size: .68rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--text-muted);
+      padding: 12px 4px 5px; position: sticky; top: 0;
+      background: var(--bg-secondary);
+    }
+    .d-od-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px; border-radius: 9px;
+      cursor: pointer; transition: background .15s;
+    }
+    .d-od-row:hover { background: var(--bg-card); }
+    .d-od-time {
+      font-size: .72rem; color: var(--text-muted);
+      font-variant-numeric: tabular-nums; min-width: 40px;
+    }
+    .d-od-title {
+      font-size: .84rem; color: var(--text-primary); flex: 1;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .d-od-cat {
+      font-size: .7rem; padding: 2px 8px; border-radius: 999px;
+      border: 1px solid var(--border); white-space: nowrap;
+    }
+    .d-od-more { font-size: .74rem; color: var(--text-muted); padding: 12px 4px 2px; text-align: center; }
+    .d-od-empty { font-size: .84rem; color: var(--text-muted); padding: 26px 4px; text-align: center; }
+
     .d-date-bar {
       display: flex;
       align-items: center;
@@ -2111,6 +2168,9 @@
       /* Five labelled buttons do not fit at 390px — keep the glyphs */
       .d-btn-label { display: none; }
       .d-icon-btn  { padding: 10px; min-height: 40px; gap: 0; }
+      /* The badge keeps its label — the number is the whole point */
+      .d-overdue      { height: 32px; min-width: 32px; padding: 0 9px; font-size: .86rem; }
+      .d-overdue-bell { display: none; }
 
       .d-date-bar       { gap: 2px; padding: 0 4px; }
       .d-date-arrow     { padding: 8px 12px; min-width: 44px; min-height: 40px; }
@@ -2184,6 +2244,10 @@
       <h1>Günlük İş Takibi</h1>
     </div>
     <div class="d-header-right">
+      <button class="d-overdue" id="overdueBadge" onclick="openOverdue()" hidden
+              title="Geçmiş tarihlerdeki tamamlanmamış görevler">
+        <span class="d-overdue-bell">&#9888;</span><span id="overdueCount">0</span>
+      </button>
       <button class="d-icon-btn" onclick="openSearch()" title="Görev ara">&#128269; <span class="d-btn-label">Ara</span></button>
       <button class="d-icon-btn" onclick="openWeekView()" title="Haftalık takvim">&#128197; <span class="d-btn-label">Hafta</span></button>
       <button class="d-icon-btn" onclick="openAnalysis()" title="Dönem analizi">📊 <span class="d-btn-label">Analiz</span></button>
@@ -2223,6 +2287,18 @@
   </div>
 
   <!-- 3-COLUMN LAYOUT -->
+  <!-- OVERDUE TASKS -->
+  <div class="d-overlay" id="overdueOverlay" onclick="handleOverdueOverlayClick(event)">
+    <div class="d-modal" style="max-width:560px">
+      <h2>Tamamlanmamış Görevler</h2>
+      <div class="d-od-sum" id="overdueSum"></div>
+      <div class="d-od-list" id="overdueList"></div>
+      <div class="d-modal-foot">
+        <button class="d-btn-cancel" onclick="closeOverdue()">Kapat</button>
+      </div>
+    </div>
+  </div>
+
   <div class="d-drawer-scrim" onclick="closeDrawer()"></div>
 
   <div class="d-layout">
@@ -2948,6 +3024,9 @@
       updateRing();
       buildTrend();
       checkDueTimes();
+      // loadTasks() is the one path every mutation goes through, so the
+      // badge stays current without hooking each action separately.
+      refreshOverdue();
     }
 
     function renderTasks() {
@@ -3432,7 +3511,7 @@
 
     // ── Keyboard shortcuts ────────────────────────────────
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeWeekView(); closeSearch(); closeTaskPanel(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); closeDrawer(); }
+      if (e.key === 'Escape') { closeModal(); closeCatManager(); closeCalendar(); closeAnalysis(); closeWeekView(); closeSearch(); closeTaskPanel(); closeTransferModal(); closeRepeatModal(); closeRepMenu(); closeDrawer(); closeOverdue(); }
       if (e.key === 'Enter' && document.getElementById('overlay').classList.contains('open')) {
         const tag = document.activeElement.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -4100,6 +4179,81 @@
       const id = panelTaskId;
       closeTaskPanel();
       await deleteTask(id);
+    }
+
+    // ── Overdue badge ────────────────────────────
+    // Counts unfinished tasks from days already past. Today is left out
+    // (the day is not over) and so is the future — repeats are created
+    // far ahead, so including them would show a backlog of hundreds.
+    // The cutoff is the browser's own today, not the server's.
+    let overdueData = { count: 0, tasks: [], truncated: false };
+
+    async function refreshOverdue() {
+      try {
+        const res = await fetch(`/daily/overdue?before=${isoDate(new Date())}`);
+        overdueData = await res.json();
+      } catch (e) { return; }
+      const badge = document.getElementById('overdueBadge');
+      if (!badge) return;
+      const n = overdueData.count || 0;
+      document.getElementById('overdueCount').textContent = n > 99 ? '99+' : n;
+      badge.hidden = n === 0;
+      badge.title  = n
+        ? `${n} tamamlanmamış görev (geçmiş tarihler) — görmek için tıkla`
+        : '';
+    }
+
+    function openOverdue() {
+      document.getElementById('overdueOverlay').classList.add('open');
+      renderOverdue();
+    }
+    function closeOverdue() {
+      document.getElementById('overdueOverlay').classList.remove('open');
+    }
+    function handleOverdueOverlayClick(e) {
+      if (e.target === document.getElementById('overdueOverlay')) closeOverdue();
+    }
+
+    function renderOverdue() {
+      const { count, tasks, truncated } = overdueData;
+      document.getElementById('overdueSum').innerHTML = count
+        ? `<strong>${count}</strong> görev geçmiş tarihlerde tamamlanmamış durumda.`
+        : '';
+
+      const el = document.getElementById('overdueList');
+      if (!tasks.length) {
+        el.innerHTML = '<div class="d-od-empty">Geciken görev yok. \uD83C\uDF89</div>';
+        return;
+      }
+
+      // Newest day first, so the most recent misses are at the top
+      let html = '', day = null;
+      tasks.forEach(t => {
+        if (t.date !== day) {
+          day = t.date;
+          html += `<div class="d-od-day">${fmtLongDate(day)}</div>`;
+        }
+        const col = catColorOf(t.category);
+        html += `
+          <div class="d-od-row" onclick="goToOverdue('${t.date}')" title="Bu güne git">
+            <span class="d-od-time">${t.time || '—'}</span>
+            <span class="d-od-title">${escHtml(t.title)}</span>
+            ${t.category
+              ? `<span class="d-od-cat" style="color:${col};border-color:${col}55">${escHtml(t.category)}</span>`
+              : ''}
+          </div>`;
+      });
+      if (truncated) {
+        html += `<div class="d-od-more">İlk ${tasks.length} görev gösteriliyor.</div>`;
+      }
+      el.innerHTML = html;
+    }
+
+    function goToOverdue(iso) {
+      currentDate = new Date(iso + 'T00:00:00');
+      updateDateLabel();
+      closeOverdue();
+      loadTasks();
     }
 
     // ── Filter drawer (mobile only) ──────────────────
