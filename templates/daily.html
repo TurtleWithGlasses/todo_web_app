@@ -1883,6 +1883,35 @@
       padding: 16px;
     }
     .d-analysis-chart-box.wide { grid-column: 1 / -1; }
+
+    /* Stacked chart: header with a period selector, and a canvas that
+       fills the card instead of leaving the lower half empty. */
+    .d-analysis-chart-box.stack { display: flex; flex-direction: column; }
+    .d-stack-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 12px;
+    }
+    .d-stack-head .d-analysis-chart-title { margin-bottom: 0; }
+    .d-stack-mode {
+      padding: 6px 28px 6px 10px; min-height: 32px;
+      background: var(--bg-secondary); color: var(--text-primary);
+      border: 1px solid var(--border); border-radius: 8px;
+      font-family: 'Outfit', sans-serif; font-size: .78rem; cursor: pointer;
+    }
+    .d-stack-mode:focus { outline: none; border-color: var(--da); }
+    .d-stack-canvas { position: relative; flex: 1; min-height: 280px; }
+    .d-stack-hint {
+      display: none; align-items: center; justify-content: space-between; gap: 10px;
+      font-size: .75rem; color: var(--text-muted);
+      background: var(--bg-secondary); border: 1px dashed var(--border);
+      border-radius: 8px; padding: 7px 10px; margin-bottom: 10px;
+    }
+    .d-stack-hint.show { display: flex; }
+    .d-stack-hint button {
+      background: transparent; border: 1px solid var(--da); color: var(--da);
+      border-radius: 7px; padding: 4px 10px; font-family: 'Outfit', sans-serif;
+      font-size: .74rem; white-space: nowrap;
+    }
     .d-analysis-chart-title {
       font-size: .75rem;
       font-weight: 600;
@@ -2655,9 +2684,18 @@
           <div class="d-analysis-chart-title">Günlük Tamamlama (Tamamlanan / Toplam)</div>
           <canvas id="chartLine" height="110"></canvas>
         </div>
-        <div class="d-analysis-chart-box">
-          <div class="d-analysis-chart-title">Günlük Yığın Grafik</div>
-          <canvas id="chartBar" height="180"></canvas>
+        <div class="d-analysis-chart-box stack">
+          <div class="d-stack-head">
+            <div class="d-analysis-chart-title" id="stackTitle">Günlük Yığın Grafik</div>
+            <select class="d-stack-mode" id="stackMode" onchange="setStackMode(this.value)"
+                    title="Çubukları güne, haftaya veya aya göre grupla">
+              <option value="day">Günlük</option>
+              <option value="week">Haftalık</option>
+              <option value="month">Aylık</option>
+            </select>
+          </div>
+          <div class="d-stack-hint" id="stackHint"></div>
+          <div class="d-stack-canvas"><canvas id="chartBar"></canvas></div>
         </div>
         <div class="d-analysis-chart-box">
           <div class="d-analysis-chart-title">Kategoriye Göre Dağılım</div>
@@ -5251,6 +5289,7 @@
 
       const { daily, categories } = data;
       analysisTasks = data.tasks || [];
+      analysisDaily = daily;
       const totalTasks = daily.reduce((s, d) => s + d.total, 0);
       const totalDone  = daily.reduce((s, d) => s + d.completed, 0);
 
@@ -5338,74 +5377,7 @@
         },
       });
 
-      // ── Stacked bar: completed (per category) vs incomplete ──
-      const barCatColor = name =>
-        (allCategories.find(c => c.name === name) || {}).color || '#64748b';
-
-      // date -> {cat: completedCount} and date -> tasks[] for tooltips
-      const dayCatDone  = {};
-      const dayTasksMap = {};
-      analysisTasks.forEach(t => {
-        (dayTasksMap[t.date] = dayTasksMap[t.date] || []).push(t);
-        if (t.status === 'tamamlandı') {
-          const c = t.category || 'Diğer';
-          const m = dayCatDone[t.date] = dayCatDone[t.date] || {};
-          m[c] = (m[c] || 0) + 1;
-        }
-      });
-      const barCats = [...new Set(
-        analysisTasks.filter(t => t.status === 'tamamlandı').map(t => t.category || 'Diğer')
-      )].sort((a, b) => a.localeCompare(b, 'tr'));
-
-      const barTooltip = {
-        callbacks: {
-          title: items => labels[items[0].dataIndex],
-          label: ctx => {
-            const date   = daily[ctx.dataIndex].date;
-            const isTodo = ctx.dataset.label === 'Tamamlanmadı';
-            const list = (dayTasksMap[date] || []).filter(t =>
-              isTodo ? t.status !== 'tamamlandı'
-                     : (t.status === 'tamamlandı' && (t.category || 'Diğer') === ctx.dataset.label));
-            const grouped = groupTaskTitles(list);
-            const lines = [` ${ctx.dataset.label}: ${ctx.parsed.y}`];
-            grouped.slice(0, 6).forEach(g =>
-              lines.push(`   • ${g.title}${g.count > 1 ? ` (${g.count})` : ''}`));
-            if (grouped.length > 6) lines.push(`   +${grouped.length - 6} görev daha`);
-            return lines;
-          },
-        },
-      };
-
-      chartBar = new Chart(document.getElementById('chartBar'), {
-        type: 'bar',
-        data: {
-          labels: tickLabels,
-          datasets: [
-            ...barCats.map(c => ({
-              label: c,
-              data: daily.map(d => (dayCatDone[d.date] || {})[c] || 0),
-              backgroundColor: barCatColor(c) + 'cc',
-              borderRadius: 2,
-            })),
-            {
-              label: 'Tamamlanmadı',
-              data: daily.map(d => d.total - d.completed),
-              backgroundColor: 'rgba(100,116,139,.3)',
-              borderRadius: 2,
-            },
-          ],
-        },
-        options: {
-          plugins: {
-            legend: { position: 'top', labels: { boxWidth: 12, padding: 8 } },
-            tooltip: barTooltip,
-          },
-          scales: {
-            x: { stacked: true, grid: { color: chartGrid }, ticks: { maxRotation: 0 } },
-            y: { stacked: true, grid: { color: chartGrid }, beginAtZero: true, ticks: { precision: 0 } },
-          },
-        },
-      });
+      renderStackChart();
 
       // ── Doughnut: by category ──
       const catColors = categories.map(c => {
@@ -5436,6 +5408,185 @@
             },
           },
           cutout: '60%',
+        },
+      });
+    }
+
+    // ── Stacked chart, grouped by day / week / month ────────
+    // Each bar is one period: completed tasks split by category, plus the
+    // unfinished remainder in grey, so a bar's height is everything that
+    // was planned in it. Works on whatever the range and category filter
+    // already selected, so it shows all tasks or filtered ones alike.
+    let analysisDaily = [];
+    let stackMode = 'day';
+    try {
+      const m = localStorage.getItem('stackMode');
+      if (['day', 'week', 'month'].includes(m)) stackMode = m;
+    } catch (e) {}
+
+    const STACK_TITLE = { day: 'Günlük', week: 'Haftalık', month: 'Aylık' };
+
+    function setStackMode(m) {
+      stackMode = m;
+      try { localStorage.setItem('stackMode', m); } catch (e) {}
+      renderStackChart();
+    }
+
+    function stackKey(iso) {
+      if (stackMode === 'month') return iso.slice(0, 7);
+      if (stackMode === 'week') {
+        // Weeks start on Monday, as on the weekly calendar
+        const d = new Date(iso + 'T00:00:00');
+        d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+        return isoDate(d);
+      }
+      return iso;
+    }
+
+    function jumpAnalysisRange(days) {
+      const btn = [...document.querySelectorAll('.d-analysis-shortcut')]
+        .find(b => (b.getAttribute('onclick') || '').includes(`setAnalysisRange(${days},`));
+      if (btn) setAnalysisRange(days, btn);
+    }
+
+    function renderStackChart() {
+      const sel = document.getElementById('stackMode');
+      if (sel) sel.value = stackMode;
+      document.getElementById('stackTitle').textContent = `${STACK_TITLE[stackMode]} Yığın Grafik`;
+      if (chartBar) { chartBar.destroy(); chartBar = null; }
+      if (!analysisDaily.length) return;
+
+      // Buckets come from the per-day series, which has every day in the
+      // range, so empty periods still get a (zero) bar.
+      const buckets = [];
+      const byKey = {};
+      analysisDaily.forEach(d => {
+        const k = stackKey(d.date);
+        let b = byKey[k];
+        if (!b) {
+          b = byKey[k] = { key: k, first: d.date, last: d.date, total: 0, done: 0, cats: {}, tasks: [] };
+          buckets.push(b);
+        }
+        b.last = d.date;
+        b.total += d.total;
+        b.done  += d.completed;
+      });
+      analysisTasks.forEach(t => {
+        const b = byKey[stackKey(t.date)];
+        if (!b) return;
+        b.tasks.push(t);
+        if (t.status === 'tamamlandı') {
+          const c = t.category || 'Diğer';
+          b.cats[c] = (b.cats[c] || 0) + 1;
+        }
+      });
+
+      // A month or week view of a few days says little — say so, and
+      // offer the range that makes the view meaningful.
+      const hint = document.getElementById('stackHint');
+      // Judged on the range length, not the bar count: a week that
+      // straddles a month end still makes two (useless) month bars.
+      const tooShort = (stackMode === 'month' && analysisDaily.length < 60) ||
+                       (stackMode === 'week'  && analysisDaily.length < 21);
+      if (tooShort) {
+        const days  = stackMode === 'month' ? 365 : 90;
+        const label = stackMode === 'month' ? 'Son 1 yıl' : 'Son 3 ay';
+        hint.innerHTML = `<span>${STACK_TITLE[stackMode]} görünüm için daha uzun bir dönem seçin.</span>
+                          <button onclick="jumpAnalysisRange(${days})">${label}</button>`;
+        hint.classList.add('show');
+      } else {
+        hint.classList.remove('show');
+      }
+
+      const fmt = (iso, o) => new Date(iso + 'T00:00:00').toLocaleDateString('tr-TR', o);
+      const multiYear = analysisDaily[0].date.slice(0, 4) !== analysisDaily[analysisDaily.length - 1].date.slice(0, 4);
+      const label = b => {
+        if (stackMode === 'month') {
+          return fmt(b.first, multiYear ? { month: 'short', year: '2-digit' } : { month: 'long' });
+        }
+        return fmt(b.first, { day: 'numeric', month: 'short' });
+      };
+      // Tooltip heading spells out the exact days the bar covers, which
+      // matters for the partial weeks and months at either end of a range.
+      const span = b => {
+        if (stackMode === 'day') return fmt(b.first, { day: 'numeric', month: 'long', year: 'numeric' });
+        if (stackMode === 'month') {
+          const lastDay = new Date(+b.key.slice(0, 4), +b.key.slice(5, 7), 0).getDate();
+          if (b.first.endsWith('-01') && +b.last.slice(8) === lastDay) {
+            return fmt(b.first, { month: 'long', year: 'numeric' });
+          }
+        }
+        return `${fmt(b.first, { day: 'numeric', month: 'short' })} – ${fmt(b.last, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      };
+
+      const labels = buckets.map(label);
+
+      const cats = [...new Set(
+        analysisTasks.filter(t => t.status === 'tamamlandı').map(t => t.category || 'Diğer')
+      )].sort((a, b) => a.localeCompare(b, 'tr'));
+      const catColor = name => (allCategories.find(c => c.name === name) || {}).color || '#64748b';
+
+      const tooltip = {
+        callbacks: {
+          title: items => span(buckets[items[0].dataIndex]),
+          label: ctx => {
+            const lines = [` ${ctx.dataset.label}: ${ctx.parsed.y}`];
+            // Per-task names only make sense for a single day; week and
+            // month bars report category totals only.
+            if (stackMode === 'day') {
+              const b = buckets[ctx.dataIndex];
+              const isTodo = ctx.dataset.label === 'Tamamlanmadı';
+              const list = b.tasks.filter(t =>
+                isTodo ? t.status !== 'tamamlandı'
+                       : (t.status === 'tamamlandı' && (t.category || 'Diğer') === ctx.dataset.label));
+              const grouped = groupTaskTitles(list);
+              grouped.slice(0, 6).forEach(g =>
+                lines.push(`   • ${g.title}${g.count > 1 ? ` (${g.count})` : ''}`));
+              if (grouped.length > 6) lines.push(`   +${grouped.length - 6} görev daha`);
+            }
+            return lines;
+          },
+          footer: items => {
+            const b = buckets[items[0].dataIndex];
+            return `Tamamlanan ${b.done} / ${b.total}`;
+          },
+        },
+        // Skip empty categories so a month tooltip is not a wall of zeros
+        filter: item => item.parsed.y > 0,
+      };
+
+      chartBar = new Chart(document.getElementById('chartBar'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            ...cats.map(c => ({
+              label: c,
+              data: buckets.map(b => b.cats[c] || 0),
+              backgroundColor: catColor(c) + 'cc',
+              borderRadius: 2,
+            })),
+            {
+              label: 'Tamamlanmadı',
+              data: buckets.map(b => b.total - b.done),
+              backgroundColor: 'rgba(100,116,139,.3)',
+              borderRadius: 2,
+            },
+          ],
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, padding: 8 } },
+            tooltip,
+          },
+          scales: {
+            x: { stacked: true, grid: { color: getVeilColor() }, 
+                 // Skip by measured width: a year of days cannot label
+                 // every bar, and fixed thinning still overlapped.
+                 ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 10 } },
+            y: { stacked: true, grid: { color: getVeilColor() }, beginAtZero: true, ticks: { precision: 0 } },
+          },
         },
       });
     }
