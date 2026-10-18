@@ -473,19 +473,32 @@
     }
     .d-card-title { font-size: .98rem; font-weight: 600; flex: 1; }
 
+    /* One fixed width for all three states, so a card's pill does not
+       change size (and the row does not shift) as the status cycles. */
     .d-status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 104px;
+      font-family: 'Outfit', sans-serif;
       font-size: .75rem;
       font-weight: 500;
-      padding: 4px 11px;
+      line-height: 1.2;
+      text-align: center;
+      padding: 4px 8px;
+      border: 1px solid transparent;
       border-radius: 20px;
       white-space: nowrap;
       flex-shrink: 0;
       transition: all .2s;
     }
     .d-status-pill:hover { filter: brightness(1.15); transform: scale(1.03); }
-    .pill-yapılacak  { background: rgba(100,116,139,.2); color: var(--text-secondary); }
-    .pill-yapılıyor  { background: rgba(var(--da-rgb),.15);  color: var(--da); }
-    .pill-tamamlandı { background: rgba(16,185,129,.15); color: #10b981; }
+    .pill-yapılacak  { background: rgba(100,116,139,.2);  border-color: rgba(100,116,139,.45); color: var(--text-secondary); }
+    /* Fixed orange rather than the theme accent: in green themes the
+       accent made "Yapılıyor" look like "Tamamlandı". */
+    .pill-yapılıyor  { background: rgba(245,158,11,.15); border-color: rgba(245,158,11,.5);   color: #f59e0b; }
+    .pill-tamamlandı { background: rgba(16,185,129,.15); border-color: rgba(16,185,129,.5);   color: #10b981; }
 
     .d-card-desc {
       font-size: .83rem;
