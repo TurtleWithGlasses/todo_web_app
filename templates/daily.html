@@ -3211,6 +3211,11 @@
         </div>`;
     }
 
+    // For text passed through an inline handler as onclick="fn('...')".
+    // encodeURIComponent leaves the apostrophe alone, so a title such as
+    // "Türkiye'de ..." ended the JS string early and the click did nothing.
+    function encArg(s) { return encodeURIComponent(s).replace(/'/g, '%27'); }
+
     function escHtml(text) {
       const d = document.createElement('div');
       d.textContent = text;
@@ -4426,7 +4431,7 @@
         ).join('');
         const more = e.categories.length > 2 ? `<span>+${e.categories.length - 2}</span>` : '';
         return `
-          <div class="d-srch-row${srchActive === e.key ? ' active' : ''}" onclick="selectEntity('${encodeURIComponent(e.key)}')">
+          <div class="d-srch-row${srchActive === e.key ? ' active' : ''}" onclick="selectEntity('${encArg(e.key)}')">
             <div class="d-srch-rtop">
               <span class="d-srch-title">${escHtml(e.title)}</span>
               <span class="d-srch-count">${e.completed}/${e.total}</span>
@@ -4581,7 +4586,7 @@
         ? `<div class="d-lin-label">Şunun revizyonu</div>
            <div class="d-lin-chain">` +
              chain.map(p =>
-               `<span class="d-lin-node" onclick="selectEntity('${encodeURIComponent(p.key)}')">${escHtml(p.title)}</span>
+               `<span class="d-lin-node" onclick="selectEntity('${encArg(p.key)}')">${escHtml(p.title)}</span>
                 <span class="d-lin-arrow">&#8594;</span>`).join('') +
              `<span class="d-lin-node current">${escHtml(title)}</span></div>`
         : '';
@@ -4591,7 +4596,7 @@
         ? `<div class="d-lin-label">Revizyonları</div>
            <div class="d-lin-kids">` +
              kids.map(c =>
-               `<div class="d-lin-kid" onclick="selectEntity('${encodeURIComponent(c.key)}')">
+               `<div class="d-lin-kid" onclick="selectEntity('${encArg(c.key)}')">
                   <span>${escHtml(c.title)}</span><span>${c.total} kayıt</span>
                 </div>`).join('') +
            `</div>`
@@ -4776,7 +4781,7 @@
           const on = !weekCatOff.has(n);
           return `<label class="d-wk-fchip${on ? ' on' : ''}" style="--wk-fc:${weekCatColour(n)}">
                     <input type="checkbox" ${on ? 'checked' : ''}
-                           onchange="toggleWeekCat('${encodeURIComponent(n)}')">
+                           onchange="toggleWeekCat('${encArg(n)}')">
                     <span class="d-wk-fdot"></span>${escHtml(weekCatLabel(n))}
                   </label>`;
         }).join('') +

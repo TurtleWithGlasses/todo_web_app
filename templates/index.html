@@ -421,7 +421,7 @@
         li.className = "task-item";
         li.innerHTML = `
           <div class="task-row" style="animation-delay: ${index * 0.05}s"
-               onclick="openTaskHistory('${encodeURIComponent(task.key)}')"
+               onclick="openTaskHistory('${encArg(task.key)}')"
                title="Geçmişi gör">
             <div class="drag-handle" title="Drag to reorder" onclick="event.stopPropagation()">⋮⋮</div>
             <input type="text" class="task-text" value="${escapeHtml(task.text)}"
@@ -518,6 +518,11 @@
 
       this.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
     }
+
+    // For text passed through an inline handler as onclick="fn('...')".
+    // encodeURIComponent leaves the apostrophe alone, so a title such as
+    // "Türkiye'de ..." ended the JS string early and the click did nothing.
+    function encArg(s) { return encodeURIComponent(s).replace(/'/g, '%27'); }
 
     function escapeHtml(text) {
       const div = document.createElement('div');
@@ -666,7 +671,7 @@
         }).join('');
         return `<tr>
             <td class="yr-name" title="${escapeHtml(t.text)}"
-                onclick="openTaskHistory('${encodeURIComponent(t.key)}')">${escapeHtml(t.text)}</td>
+                onclick="openTaskHistory('${encArg(t.key)}')">${escapeHtml(t.text)}</td>
             ${cells}
             <td class="yr-tot">${t.both}/${t.active}</td>
           </tr>`;
