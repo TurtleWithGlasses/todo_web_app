@@ -647,6 +647,11 @@ def rename_task_entity(old_title: str, new_title: str) -> int:
         db.commit()
         return len(rows)
 
+def _daily_order(t):
+    """Sort key matching how the daily page lists tasks: by date, then
+    timed tasks by time, then untimed ones by position (id breaks ties)."""
+    return (t.date or "", 0 if t.time else 1, t.time or "", t.position or 0, t.id)
+
 def split_task_entity(task_id: int, new_title: str, include_later: bool = False) -> int:
     """Peel occurrences off a task so they become a separate task.
 
@@ -669,8 +674,12 @@ def split_task_entity(task_id: int, new_title: str, include_later: bool = False)
             return 0
         key = normalize_title(src.title)
         if include_later:
+            # "This and later" means later in the order the day is shown,
+            # not just same-or-later date: comparing dates alone also took
+            # the occurrences earlier on the same day.
+            start = _daily_order(src)
             rows = [t for t in db.query(DailyTask).all()
-                    if normalize_title(t.title) == key and t.date >= src.date]
+                    if normalize_title(t.title) == key and _daily_order(t) >= start]
         else:
             rows = [src]
 
