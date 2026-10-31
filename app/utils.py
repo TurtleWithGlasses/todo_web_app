@@ -647,6 +647,25 @@ def rename_task_entity(old_title: str, new_title: str) -> int:
         db.commit()
         return len(rows)
 
+ENTITY_FIELDS = ("description", "time", "category", "priority")
+
+def update_task_entity(title: str, **fields) -> int:
+    """Apply field changes to every occurrence of a task (same normalized
+    title), regardless of repeat group. Date and status stay per row:
+    one date for all would stack every occurrence on a single day."""
+    fields = {k: v for k, v in fields.items() if k in ENTITY_FIELDS}
+    key = normalize_title(title)
+    if not key or not fields:
+        return 0
+    with SessionLocal() as db:
+        rows = [t for t in db.query(DailyTask).all() if normalize_title(t.title) == key]
+        for t in rows:
+            for k, v in fields.items():
+                setattr(t, k, v)
+        db.commit()
+        return len(rows)
+
+
 def _daily_order(t):
     """Sort key matching how the daily page lists tasks: by date, then
     timed tasks by time, then untimed ones by position (id breaks ties)."""

@@ -19,6 +19,7 @@ from app.utils import (
     normalize_title, get_month_task_history, get_month_task_summary,
     get_year_overview, get_task_years,
     get_overdue_daily,
+    update_task_entity,
     list_month_task_entities, count_month_task_occurrences,
     rename_month_task_entity, split_month_task,
 )
@@ -266,8 +267,16 @@ def daily_edit(id):
     # governs the remaining, per-day fields.
     renamed = 0
     new_title = fields.pop("title", None)
+    current = get_daily_task(id)
+
+    # "Tum ogeleri degistir": apply to every occurrence of the task. Done
+    # before any rename, while the rows still share the current title.
+    updated = 0
+    if data.get("apply_to_entity") and current and fields:
+        updated = update_task_entity(current["title"], **fields)
+        fields = {}
+
     if new_title is not None:
-        current = get_daily_task(id)
         new_title = (new_title or "").strip()
         if current and new_title and new_title != current["title"]:
             renamed = rename_task_entity(current["title"], new_title)
@@ -277,7 +286,7 @@ def daily_edit(id):
             update_repeat_group(data["group_id"], **fields)
         else:
             update_daily_task(id, **fields)
-    return jsonify({"success": True, "renamed": renamed})
+    return jsonify({"success": True, "renamed": renamed, "updated": updated})
 
 @main.route("/daily/status/<int:id>", methods=["POST"])
 def daily_status(id):

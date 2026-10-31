@@ -1587,6 +1587,13 @@
       transition: all .15s;
     }
     .d-split-btn:hover { color: var(--da); border-color: var(--da); }
+    /* Applies to every row rather than peeling rows off, so it gets its
+       own line and a solid border to read differently from the splits. */
+    .d-split-btn.all {
+      flex-basis: 100%;
+      border-style: solid;
+      color: var(--text-primary);
+    }
 
     .d-srch-lineage { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
     .d-lin-label {
@@ -2563,6 +2570,8 @@
         <div class="d-split-btns">
           <button type="button" class="d-split-btn" onclick="doSplit(false)">Sadece bu öğeyi ayır</button>
           <button type="button" class="d-split-btn" onclick="doSplit(true)">Bu öğeyi ve sonrakileri ayır</button>
+          <button type="button" class="d-split-btn all" onclick="submitTask({ allItems: true })"
+                  title="Değiştirdiğin açıklama, saat, kategori ve öncelik bu görevin tüm kayıtlarına uygulanır">Tüm öğeleri değiştir</button>
         </div>
       </div>
 
@@ -3513,7 +3522,9 @@
       }
     }
 
-    async function submitTask() {
+    const FIELD_LABEL = { description: 'açıklama', time: 'saat', category: 'kategori', priority: 'öncelik' };
+
+    async function submitTask(opts = {}) {
       const title = document.getElementById('fTitle').value.trim();
       if (!title) { document.getElementById('fTitle').focus(); return; }
 
@@ -3524,6 +3535,37 @@
         category:    document.getElementById('fCategory').value,
         priority:    document.getElementById('fPriority').value,
       };
+
+      if (editingTaskId !== null && opts.allItems) {
+        // "Tüm öğeleri değiştir": send only the fields actually changed,
+        // so changing the category does not also flatten every row's time
+        // (one task can sit at 07:30, 08:00 and 12:00 on the same day).
+        const orig = allTasks.find(t => t.id === editingTaskId);
+        if (!orig) return;
+        const changed = {};
+        Object.keys(FIELD_LABEL).forEach(k => {
+          if ((payload[k] || '') !== (orig[k] || '')) changed[k] = payload[k];
+        });
+        const renaming = title !== orig.title;
+        if (!Object.keys(changed).length && !renaming) {
+          alert('Değiştirilmiş bir alan yok. Önce açıklama, saat, kategori ya da önceliği değiştir.');
+          return;
+        }
+        const { count } = await (await fetch(
+          `/daily/task-count?title=${encodeURIComponent(orig.title)}`)).json();
+        const parts = Object.keys(changed).map(k => FIELD_LABEL[k]);
+        if (renaming) parts.unshift('ad');
+        if (!confirm(`"${orig.title}" gorevinin ${count} kaydinin tamaminda ` +
+                     `${parts.join(', ')} degistirilecek.\n\nTarihler ve durumlar ayni kalir.\n\nDevam edilsin mi?`)) return;
+        await fetch(`/daily/edit/${editingTaskId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...changed, ...(renaming ? { title } : {}), apply_to_entity: true }),
+        });
+        closeModal();
+        await loadTasks();
+        return;
+      }
 
       if (editingTaskId !== null) {
         // Title is identity, so a rename always applies to the whole task.
