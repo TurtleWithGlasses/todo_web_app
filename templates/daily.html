@@ -1537,6 +1537,22 @@
       border-radius: 8px;
     }
     .d-srch-occ:hover { background: var(--bg-card-hover); }
+
+    /* Actions for the selected occurrence, laid out like the task panel */
+    /* Sticky so the buttons stay reachable while scrolling a long
+       history (a weekly task can have hundreds of rows). The -16px
+       offsets the panel's own padding so it pins to the very top. */
+    .d-srch-acts {
+      position: sticky; top: -16px; z-index: 2;
+      margin: 0 -16px 8px; padding: 10px 16px 12px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
+    .d-srch-acts .d-tp-actions { margin-top: 0; }
+    .d-srch-sel {
+      font-size: .74rem; color: var(--text-muted); margin-bottom: 8px;
+    }
+    .d-srch-sel strong { color: var(--text-primary); font-weight: 600; }
     .d-srch-occ:last-child { border-bottom: none; }
     .d-srch-odate {
       font-size: .76rem; color: var(--text-primary);
@@ -4395,8 +4411,12 @@
       const range = occ.length
         ? `${fmtLongDate(meta.first_date)} – ${fmtLongDate(meta.last_date)}`
         : '';
+      srchOcc = occ;
+      srchSelId = defaultSearchOcc(occ);
       const rows = occ.map(o => `
-        <div class="d-srch-occ" onclick="goToDayFromSearch('${o.date}')" title="Bu güne git">
+        <div class="d-srch-occ${o.id === srchSelId ? ' current' : ''}" data-occ="${o.id}"
+             onclick="selectSearchOcc(${o.id})" ondblclick="goToDayFromSearch('${o.date}')"
+             title="Seç (çift tıkla: bu güne git)">
           <span class="d-srch-odate">${fmtLongDate(o.date)}</span>
           <span class="d-srch-otime">${o.time || '—'}</span>
           <span class="d-srch-ocat" style="color:${catColorOf(o.category)}">${escHtml(o.category) || '—'}</span>
@@ -4409,6 +4429,17 @@
           <strong>${meta.total || 0}</strong> kez planlandı ·
           <strong>${meta.completed || 0}</strong> tamamlandı${range ? ' · ' + range : ''}
         </div>
+        ${occ.length ? `
+        <div class="d-srch-acts">
+          <div class="d-srch-sel" id="srchSelLabel"></div>
+          <div class="d-tp-actions">
+            <button class="d-tp-btn" onclick="srchAct('edit')">&#9998; Düzenle</button>
+            <button class="d-tp-btn" onclick="srchAct('move')">&#8594; Taşı</button>
+            <button class="d-tp-btn" onclick="srchAct('copy')">&#10697; Kopyala</button>
+            <button class="d-tp-btn danger" onclick="srchAct('delete')">&#10005; Sil</button>
+            <button class="d-tp-btn" onclick="srchAct('go')">&#128197; Bu güne git</button>
+          </div>
+        </div>` : ''}
         ${rows || '<div class="d-srch-hint">Kayıt yok.</div>'}
         <div class="d-srch-lineage" id="srchLineage"></div>
         <div class="d-srch-merge">
@@ -4424,7 +4455,73 @@
           </div>
         </div>`;
 
+      updateSearchSelLabel();
+      // Bring the selected occurrence into view: with a long history the
+      // next upcoming one can sit hundreds of rows down.
+      // Measured against the sticky bar, which wraps to two rows on a
+      // phone and would otherwise cover a centred row.
+      const box = document.getElementById('srchDetail');
+      const selRow = box.querySelector('.d-srch-occ.current');
+      const bar = box.querySelector('.d-srch-acts');
+      if (selRow && bar) {
+        const free = box.clientHeight - bar.offsetHeight;
+        box.scrollTop += selRow.getBoundingClientRect().top - box.getBoundingClientRect().top
+                       - bar.offsetHeight - Math.max(8, (free - selRow.offsetHeight) / 3);
+      }
       renderLineage(key, meta.title || '');
+    }
+
+    // ── Search: acting on one occurrence ────────────────────
+    // A search result is a whole task, but edit / move / copy / delete
+    // work on one dated occurrence. One row is selected (the next upcoming
+    // one by default, as in the task panel) and the buttons act on it.
+    let srchOcc   = [];
+    let srchSelId = null;
+
+    function defaultSearchOcc(occ) {
+      if (!occ.length) return null;
+      const today = isoDate(new Date());
+      // occ is newest first; the last one dated today or later is the
+      // nearest upcoming occurrence. With none ahead, take the newest.
+      const ahead = occ.filter(o => o.date >= today);
+      return (ahead.length ? ahead[ahead.length - 1] : occ[0]).id;
+    }
+
+    function selectSearchOcc(id) {
+      srchSelId = id;
+      document.querySelectorAll('#srchDetail .d-srch-occ').forEach(el =>
+        el.classList.toggle('current', +el.dataset.occ === id));
+      updateSearchSelLabel();
+    }
+
+    function updateSearchSelLabel() {
+      const el = document.getElementById('srchSelLabel');
+      const o = srchOcc.find(x => x.id === srchSelId);
+      if (el && o) {
+        el.innerHTML = `Seçili kayıt: <strong>${fmtLongDate(o.date)}${o.time ? ' · ' + o.time : ''}</strong>`;
+      }
+    }
+
+    // The edit, move and copy dialogs and delete all look the task up in
+    // allTasks, which holds only the day on screen. So open that
+    // occurrence's day first, then hand over to the same code paths the
+    // task panel uses - it also leaves you on the day that changed.
+    async function srchAct(kind) {
+      const o = srchOcc.find(x => x.id === srchSelId);
+      if (!o) return;
+      if (kind === 'delete' &&
+          !confirm(`"${o.title}" ${fmtLongDate(o.date)}${o.time ? ' ' + o.time : ''} kaydi silinecek.\n\nDevam edilsin mi?`)) return;
+
+      closeSearch();
+      currentDate = new Date(o.date + 'T00:00:00');
+      updateDateLabel();
+      await loadTasks();
+      if (!allTasks.some(t => t.id === o.id)) return;   // removed meanwhile
+
+      if (kind === 'edit')   openEditModal(o.id);
+      if (kind === 'move')   openTransferModal(o.id, 'move');
+      if (kind === 'copy')   openTransferModal(o.id, 'copy');
+      if (kind === 'delete') await deleteTask(o.id);
     }
 
     // Revision lineage: which task this one revises, and which tasks
