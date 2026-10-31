@@ -2545,8 +2545,8 @@
           <em>Kaydet</em> dersen hepsi yeniden adlandırılır.
         </div>
         <div class="d-split-btns">
-          <button type="button" class="d-split-btn" onclick="doSplit(false)">Sadece bu günü ayır</button>
-          <button type="button" class="d-split-btn" onclick="doSplit(true)">Bu gün ve sonrasını ayır</button>
+          <button type="button" class="d-split-btn" onclick="doSplit(false)">Sadece bu öğeyi ayır</button>
+          <button type="button" class="d-split-btn" onclick="doSplit(true)">Bu öğeyi ve sonrakileri ayır</button>
         </div>
       </div>
 
@@ -4096,9 +4096,12 @@
         return;
       }
 
+      // Name the item by date and time: a split is per occurrence now,
+      // and one day can hold several of the same task.
+      const item = `${fmtLongDate(orig.date)}${orig.time ? ' ' + orig.time : ''} kaydi`;
       const scope = includeLater
-        ? `${fmtLongDate(orig.date)} ve sonrasindaki kayitlar`
-        : `sadece ${fmtLongDate(orig.date)} kaydi`;
+        ? `${item} ve sonraki kayitlar`
+        : `sadece ${item}`;
       if (!confirm(`${scope} "${newTitle}" adiyla ayri bir gorev olacak.\n\nDevam edilsin mi?`)) return;
 
       const res = await fetch(`/daily/task-split/${editingTaskId}`, {
