@@ -3555,8 +3555,8 @@
           `/daily/task-count?title=${encodeURIComponent(orig.title)}`)).json();
         const parts = Object.keys(changed).map(k => FIELD_LABEL[k]);
         if (renaming) parts.unshift('ad');
-        if (!confirm(`"${orig.title}" gorevinin ${count} kaydinin tamaminda ` +
-                     `${parts.join(', ')} degistirilecek.\n\nTarihler ve durumlar ayni kalir.\n\nDevam edilsin mi?`)) return;
+        if (!confirm(`"${orig.title}" görevinin ${count} kaydının tamamında ` +
+                     `${parts.join(', ')} değiştirilecek.\n\nTarihler ve durumlar aynı kalır.\n\nDevam edilsin mi?`)) return;
         await fetch(`/daily/edit/${editingTaskId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
