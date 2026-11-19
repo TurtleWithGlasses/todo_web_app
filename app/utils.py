@@ -625,6 +625,9 @@ def search_task_entities(query: str = "", limit: int = 60):
             "first_date": items[0].date,
             "last_date":  items[-1].date,
             "categories": cats,
+            # Newest occurrence that has one; each occurrence keeps its own
+            # link in the history, as different dates can point to different e-mails.
+            "email_link": next((t.email_link for t in reversed(items) if t.email_link), ""),
         })
     out.sort(key=lambda e: (-e["total"], e["title"]))
     return out[:limit]

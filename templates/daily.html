@@ -612,6 +612,11 @@
       transition: background .2s, color .2s;
     }
     .d-mail-btn:hover { background: rgba(59,130,246,.14); color: #60a5fa; }
+    /* Search: right-aligned in the list row's meta line, and a fixed slot
+       in occurrence rows so the status pills stay in one column whether
+       or not a row has a link. */
+    .d-srch-meta .d-mail-btn { margin-left: auto; width: 24px; height: 22px; font-size: .85rem; }
+    .d-srch-mail { width: 28px; flex-shrink: 0; display: flex; justify-content: center; }
 
     .d-fl-opt { text-transform: none; letter-spacing: 0; font-weight: 400; opacity: .75; }
     .d-link-row { display: flex; gap: 8px; }
@@ -3280,6 +3285,17 @@
       return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
                       .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
+    // ✉ link for search rows. Stops the click (and double-click) so it
+    // opens the e-mail without also selecting the row or jumping to its day.
+    function mailIcon(url, title) {
+      const link = safeLink(url);
+      return link
+        ? `<a class="d-mail-btn" href="${attrEsc(link)}" target="_blank" rel="noopener noreferrer"
+              onclick="event.stopPropagation()" ondblclick="event.stopPropagation()"
+              title="${attrEsc(title)}">&#9993;</a>`
+        : '';
+    }
+
     function onLinkInput() {
       const v = document.getElementById('fLink').value.trim();
       document.getElementById('fLinkOpen').disabled = !safeLink(v);
@@ -4527,7 +4543,7 @@
               <span class="d-srch-title">${escHtml(e.title)}</span>
               <span class="d-srch-count">${e.completed}/${e.total}</span>
             </div>
-            <div class="d-srch-meta">${cats}${more}</div>
+            <div class="d-srch-meta">${cats}${more}${mailIcon(e.email_link, 'En son bağlı Outlook e-postasını aç')}</div>
           </div>`;
       }).join('');
     }
@@ -4558,6 +4574,7 @@
           <span class="d-srch-odate">${fmtLongDate(o.date)}</span>
           <span class="d-srch-otime">${o.time || '—'}</span>
           <span class="d-srch-ocat" style="color:${catColorOf(o.category)}">${escHtml(o.category) || '—'}</span>
+          <span class="d-srch-mail">${mailIcon(o.email_link, 'Bu kaydın Outlook e-postasını aç')}</span>
           <span class="d-status-pill pill-${o.status}">${escHtml(TP_STATUS_LABEL[o.status] || o.status)}</span>
         </div>`).join('');
 
