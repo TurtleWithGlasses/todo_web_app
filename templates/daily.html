@@ -600,6 +600,41 @@
     .d-repeat-btn:hover   { background: rgba(245,158,11,.12); color: #f59e0b; }
     .d-repeat-btn.active  { color: #f59e0b; }
 
+    /* Outlook link: only rendered when the task has one */
+    .d-card-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .d-mail-btn {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 7px;
+      color: #3b82f6;
+      font-size: .95rem; line-height: 1;
+      text-decoration: none;
+      transition: background .2s, color .2s;
+    }
+    .d-mail-btn:hover { background: rgba(59,130,246,.14); color: #60a5fa; }
+
+    .d-fl-opt { text-transform: none; letter-spacing: 0; font-weight: 400; opacity: .75; }
+    .d-link-row { display: flex; gap: 8px; }
+    .d-link-row .d-fi { flex: 1; min-width: 0; }
+    .d-link-open {
+      flex-shrink: 0; padding: 0 12px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text-secondary); font-family: 'Outfit', sans-serif; font-size: .78rem;
+    }
+    .d-link-open:hover:not(:disabled) { color: #3b82f6; border-color: #3b82f6; }
+    .d-link-open:disabled { opacity: .4; cursor: default; }
+    .d-link-err { font-size: .74rem; color: var(--danger, #ef4444); margin-top: 6px; display: none; }
+    .d-link-err.show { display: block; }
+
+    .d-tp-mail {
+      display: inline-flex; align-items: center; gap: 7px;
+      margin-top: 12px; padding: 8px 12px;
+      border: 1px solid rgba(59,130,246,.4); border-radius: 9px;
+      background: rgba(59,130,246,.08);
+      color: #60a5fa; font-size: .8rem; text-decoration: none;
+    }
+    .d-tp-mail:hover { background: rgba(59,130,246,.16); }
+
     /* ── New-task repeat toggle ─────────────────── */
     .d-new-repeat-row, .d-edit-all-row {
       display: flex; align-items: center; gap: 8px;
@@ -2526,6 +2561,17 @@
         <textarea class="d-fta" id="fDesc" placeholder="Kısa açıklama..."></textarea>
       </div>
 
+      <div class="d-fg">
+        <label class="d-fl">Outlook bağlantısı <span class="d-fl-opt">(isteğe bağlı)</span></label>
+        <div class="d-link-row">
+          <input class="d-fi" id="fLink" type="url" inputmode="url" autocomplete="off"
+                 placeholder="https://outlook.office.com/mail/..." oninput="onLinkInput()" />
+          <button type="button" class="d-link-open" id="fLinkOpen" onclick="openFormLink()"
+                  title="Bağlantıyı yeni sekmede dene" disabled>Aç &#8599;</button>
+        </div>
+        <div class="d-link-err" id="fLinkErr">Bağlantı https:// ile başlamalı.</div>
+      </div>
+
       <div class="d-form-row">
         <div class="d-fg">
           <label class="d-fl">Tarih</label>
@@ -2600,6 +2646,7 @@
         <button class="d-status-pill" id="tpStatus" onclick="tpCycleStatus()" title="Durumu değiştir"></button>
       </div>
       <div class="d-tp-desc" id="tpDesc" style="display:none"></div>
+      <a class="d-tp-mail" id="tpMail" target="_blank" rel="noopener noreferrer" style="display:none">&#9993; Outlook e-postasını aç &#8599;</a>
       <div class="d-tp-actions">
         <button class="d-tp-btn" onclick="tpEdit()">&#9998; Düzenle</button>
         <button class="d-tp-btn" onclick="tpMove()">&#8594; Taşı</button>
@@ -3180,6 +3227,12 @@
         ? `<button class="d-repeat-btn active" onclick="openRepMenu(event,${t.id},${t.repeat_group_id})" title="Tekrar grubu">🔁</button>`
         : `<button class="d-repeat-btn" onclick="event.stopPropagation(); openRepeatModal(${t.id})" title="Tekrarlayan görev yap">🔁</button>`;
 
+      const link = safeLink(t.email_link);
+      const mailBtn = link
+        ? `<a class="d-mail-btn" href="${attrEsc(link)}" target="_blank" rel="noopener noreferrer"
+              onclick="event.stopPropagation()" title="Outlook e-postasını aç">&#9993;</a>`
+        : '';
+
       // Edit / move / copy / delete now live in the detail panel, so the
       // whole card is the way in. The repeat button stays: its menu is a
       // positioned popup that would render behind a modal overlay.
@@ -3206,7 +3259,7 @@
               ${catTag}
               <span class="d-pri-tag pri-${t.priority}">${priLabel}</span>
             </div>
-            ${repeatBtn}
+            <div class="d-card-actions">${mailBtn}${repeatBtn}</div>
           </div>
         </div>`;
     }
@@ -3215,6 +3268,27 @@
     // encodeURIComponent leaves the apostrophe alone, so a title such as
     // "Türkiye'de ..." ended the JS string early and the click did nothing.
     function encArg(s) { return encodeURIComponent(s).replace(/'/g, '%27'); }
+
+    // An e-mail link is shown as an href, so accept plain web links only
+    // (a javascript: URL would run on click) and escape it for an
+    // attribute: escHtml leaves double quotes alone.
+    function safeLink(u) {
+      const v = String(u || '').trim();
+      return /^https?:\/\/\S+$/i.test(v) ? v : '';
+    }
+    function attrEsc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                      .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function onLinkInput() {
+      const v = document.getElementById('fLink').value.trim();
+      document.getElementById('fLinkOpen').disabled = !safeLink(v);
+      document.getElementById('fLinkErr').classList.toggle('show', !!v && !safeLink(v));
+    }
+    function openFormLink() {
+      const v = safeLink(document.getElementById('fLink').value);
+      if (v) window.open(v, '_blank', 'noopener');
+    }
 
     function escHtml(text) {
       const d = document.createElement('div');
@@ -3439,6 +3513,8 @@
       editingGroupId = task.repeat_group_id || null;
       document.getElementById('fTitle').value    = task.title;
       document.getElementById('fDesc').value     = task.description || '';
+      document.getElementById('fLink').value     = task.email_link || '';
+      onLinkInput();
       document.getElementById('fDate').value     = task.date || isoDate(currentDate);
       document.getElementById('fTime').value     = task.time || '';
       document.getElementById('fCategory').value = task.category || '';
@@ -3466,7 +3542,8 @@
       document.getElementById('overlay').classList.remove('open');
       editingTaskId  = null;
       editingGroupId = null;
-      ['fTitle','fDesc','fDate','fTime'].forEach(id => document.getElementById(id).value = '');
+      ['fTitle','fDesc','fDate','fTime','fLink'].forEach(id => document.getElementById(id).value = '');
+      onLinkInput();
       document.getElementById('fCategory').value = '';
       document.getElementById('fPriority').value = 'orta';
       document.getElementById('editAllRow').style.display    = 'none';
@@ -3527,7 +3604,8 @@
       }
     }
 
-    const FIELD_LABEL = { description: 'açıklama', time: 'saat', category: 'kategori', priority: 'öncelik' };
+    const FIELD_LABEL = { description: 'açıklama', time: 'saat', category: 'kategori', priority: 'öncelik',
+                          email_link: 'Outlook bağlantısı' };
 
     async function submitTask(opts = {}) {
       const title = document.getElementById('fTitle').value.trim();
@@ -3539,7 +3617,15 @@
         time:        document.getElementById('fTime').value,
         category:    document.getElementById('fCategory').value,
         priority:    document.getElementById('fPriority').value,
+        email_link:  document.getElementById('fLink').value.trim(),
       };
+      // Optional, but if present it must be a web link: it becomes a
+      // clickable href, and anything else could be a script URL.
+      if (payload.email_link && !safeLink(payload.email_link)) {
+        document.getElementById('fLinkErr').classList.add('show');
+        document.getElementById('fLink').focus();
+        return;
+      }
 
       if (editingTaskId !== null && opts.allItems) {
         // "Tüm öğeleri değiştir": send only the fields actually changed,
@@ -4209,6 +4295,11 @@
       const desc = document.getElementById('tpDesc');
       desc.style.display = t.description ? '' : 'none';
       desc.textContent = t.description || '';
+
+      const mail = document.getElementById('tpMail');
+      const mailHref = safeLink(t.email_link);
+      mail.style.display = mailHref ? '' : 'none';
+      if (mailHref) mail.href = mailHref; else mail.removeAttribute('href');
 
       document.getElementById('tpHist').innerHTML = '';
       document.getElementById('tpLineage').innerHTML = '';

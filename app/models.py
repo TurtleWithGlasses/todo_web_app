@@ -53,3 +53,4 @@ class DailyTask(Base):
     date = Column(String, nullable=False)      # ISO date string e.g. "2026-03-10"
     position = Column(Integer, nullable=False, default=0)
     repeat_group_id = Column(Integer, nullable=True)  # NULL = standalone, N = repeat group
+    email_link = Column(String, nullable=True, default="")  # optional Outlook web link

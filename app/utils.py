@@ -394,7 +394,24 @@ def load_daily_tasks(date: str):
     with SessionLocal() as db:
         return db.query(DailyTask).filter(DailyTask.date == date).order_by(DailyTask.position).all()
 
-def add_daily_task(title: str, description: str, time: str, category: str, priority: str, date: str):
+def clean_email_link(value):
+    """Normalise an optional e-mail link. Returns "" for none, the link if
+    it is a plain http(s) URL, or None when it is not acceptable.
+
+    Only http(s) is allowed: the link is rendered as a clickable href, and
+    a javascript: or data: URL there would run code when clicked.
+    """
+    v = (value or "").strip()
+    if not v:
+        return ""
+    if len(v) > 2048 or any(c.isspace() for c in v):
+        return None
+    if not v.lower().startswith(("https://", "http://")):
+        return None
+    return v
+
+def add_daily_task(title: str, description: str, time: str, category: str, priority: str, date: str,
+                   email_link: str = ""):
     with SessionLocal() as db:
         last = db.query(DailyTask).filter(DailyTask.date == date).order_by(DailyTask.position.desc()).first()
         position = last.position + 1 if last else 0
@@ -406,6 +423,7 @@ def add_daily_task(title: str, description: str, time: str, category: str, prior
             priority=priority,
             date=date,
             position=position,
+            email_link=email_link or "",
         )
         db.add(task)
         db.commit()
@@ -459,6 +477,7 @@ def duplicate_daily_task(task_id: int, new_date: str, new_time: str = None, new_
             priority=task.priority,
             date=new_date,
             position=position,
+            email_link=task.email_link or "",
         )
         db.add(new_task)
         db.commit()
@@ -489,6 +508,7 @@ def create_repeat_tasks(task_id: int, dates: list, time: str):
                 date=date,
                 position=position,
                 repeat_group_id=group_id,
+                email_link=source.email_link or "",
             ))
         db.commit()
         return group_id
@@ -647,7 +667,7 @@ def rename_task_entity(old_title: str, new_title: str) -> int:
         db.commit()
         return len(rows)
 
-ENTITY_FIELDS = ("description", "time", "category", "priority")
+ENTITY_FIELDS = ("description", "time", "category", "priority", "email_link")
 
 def update_task_entity(title: str, **fields) -> int:
     """Apply field changes to every occurrence of a task (same normalized
@@ -824,6 +844,7 @@ def get_task_history(key: str):
         "priority":    t.priority,
         "status":      t.status,
         "description": t.description or "",
+        "email_link":  t.email_link or "",
     } for t in items]
 
 def set_daily_task_status(task_id: int, status: str):

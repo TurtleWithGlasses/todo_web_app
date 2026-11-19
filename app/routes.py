@@ -18,7 +18,7 @@ from app.utils import (
     split_task_entity, set_task_parent, get_task_lineage,
     normalize_title, get_month_task_history, get_month_task_summary,
     get_year_overview, get_task_years,
-    get_overdue_daily,
+    get_overdue_daily, clean_email_link,
     update_task_entity,
     list_month_task_entities, count_month_task_occurrences,
     rename_month_task_entity, split_month_task,
@@ -33,6 +33,7 @@ Base.metadata.create_all(engine)
 for _stmt in [
     "ALTER TABLE daily_tasks ADD COLUMN repeat_group_id INTEGER",
     "ALTER TABLE tasks ADD COLUMN month VARCHAR",
+    "ALTER TABLE daily_tasks ADD COLUMN email_link VARCHAR",
 ]:
     try:
         with engine.begin() as _conn:
@@ -222,6 +223,7 @@ def daily_get_tasks():
             "date": t.date,
             "position": t.position,
             "repeat_group_id": t.repeat_group_id,
+            "email_link": t.email_link or "",
             # Identity key, computed server-side so the client never has to
             # reimplement the Turkish-aware folding and drift from it.
             "key": normalize_title(t.title),
@@ -235,6 +237,9 @@ def daily_add():
     required = ("title", "date")
     if not all(data.get(k) for k in required):
         return jsonify({"success": False, "error": "title and date are required"}), 400
+    link = clean_email_link(data.get("email_link"))
+    if link is None:
+        return jsonify({"success": False, "error": "invalid email_link"}), 400
     task = add_daily_task(
         title=data["title"],
         description=data.get("description", ""),
@@ -242,6 +247,7 @@ def daily_add():
         category=data.get("category", ""),
         priority=data.get("priority", "orta"),
         date=data["date"],
+        email_link=link,
     )
     return jsonify({
         "success": True,
@@ -254,13 +260,18 @@ def daily_add():
         "status": task.status,
         "date": task.date,
         "position": task.position,
+        "email_link": task.email_link or "",
     })
 
 @main.route("/daily/edit/<int:id>", methods=["POST"])
 def daily_edit(id):
     data = request.get_json()
-    allowed = {"title", "description", "time", "category", "priority"}
+    allowed = {"title", "description", "time", "category", "priority", "email_link"}
     fields = {k: v for k, v in data.items() if k in allowed}
+    if "email_link" in fields:
+        fields["email_link"] = clean_email_link(fields["email_link"])
+        if fields["email_link"] is None:
+            return jsonify({"success": False, "error": "invalid email_link"}), 400
 
     # Title is identity: renaming re-identifies the task, so it always
     # applies to every occurrence. The repeat-group checkbox still
