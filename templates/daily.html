@@ -1334,6 +1334,66 @@
       opacity: 1 !important;
     }
     .d-cal-day.today.selected { box-shadow: 0 0 10px var(--da-glow); }
+
+    /* ── Date picker for form fields ───────────────────────
+       Replaces the browser's own date popup, which cannot be styled,
+       with one drawn in the same style as the date-bar calendar. */
+    .d-date-field {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      text-align: left; cursor: pointer;
+    }
+    .d-date-field .d-df-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .d-date-field.empty .d-df-text { color: var(--text-muted); }
+    .d-date-field .d-df-icon { color: var(--text-muted); font-size: .95rem; line-height: 1; flex-shrink: 0; }
+    .d-date-field:hover .d-df-icon,
+    .d-date-field.open .d-df-icon { color: var(--da); }
+    .d-date-field.open { border-color: var(--da); }
+
+    .d-dp {
+      position: fixed; z-index: 1300;          /* above modals (1000) and the drawer (1200) */
+      width: 284px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 14px 12px;
+      box-shadow: 0 16px 48px rgba(0,0,0,.55);
+      opacity: 0; pointer-events: none;
+      transform: translateY(-4px);
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    .d-dp.open { opacity: 1; pointer-events: all; transform: translateY(0); }
+    .d-dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .d-dp-title { font-size: .9rem; font-weight: 700; color: var(--text-primary); }
+    .d-dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+    .d-dp-dow {
+      text-align: center; font-size: .6rem; font-weight: 600; color: var(--text-muted);
+      padding: 3px 0 6px; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .d-dp-day {
+      height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: 1px solid transparent; border-radius: 8px;
+      font-family: 'Outfit', sans-serif; font-size: .82rem; line-height: 1;
+      color: var(--text-secondary); cursor: pointer; padding: 0;
+      transition: background .13s, color .13s;
+    }
+    .d-dp-day:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .d-dp-day.other { color: var(--text-muted); opacity: .45; }
+    .d-dp-day.today { color: var(--da); font-weight: 700; border-color: rgba(var(--da-rgb), .45); }
+    .d-dp-day.sel { background: var(--da); color: #fff; font-weight: 700; opacity: 1; border-color: var(--da); }
+    .d-dp-day.sel.today { box-shadow: 0 0 10px var(--da-glow); }
+    .d-dp-day:focus-visible { outline: 2px solid var(--da); outline-offset: 1px; }
+    .d-dp-foot {
+      display: flex; justify-content: space-between; gap: 8px;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    }
+    .d-dp-btn {
+      background: transparent; border: 1px solid var(--border); border-radius: 8px;
+      padding: 6px 12px; min-height: 32px;
+      font-family: 'Outfit', sans-serif; font-size: .76rem; color: var(--text-secondary);
+    }
+    .d-dp-btn:hover { color: var(--da); border-color: var(--da); }
+    .d-dp-btn.ghost { border-color: transparent; }
     .d-cal-dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; min-height: 6px; }
     .d-cal-dot  { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
 
@@ -2909,11 +2969,11 @@
         <div class="d-rep-weekly-range">
           <div class="d-fg">
             <label class="d-fl">Başlangıç</label>
-            <input class="d-fi" id="repWeeklyFrom" type="date" oninput="updateWeeklyPreview()" />
+            <input class="d-fi" id="repWeeklyFrom" type="date" data-dp-optional oninput="updateWeeklyPreview()" />
           </div>
           <div class="d-fg">
             <label class="d-fl">Bitiş</label>
-            <input class="d-fi" id="repWeeklyTo" type="date" oninput="updateWeeklyPreview()" />
+            <input class="d-fi" id="repWeeklyTo" type="date" data-dp-optional oninput="updateWeeklyPreview()" />
           </div>
         </div>
         <div class="d-rep-weekly-preview" id="repWeeklyPreview">Gün ve tarih aralığı seç</div>
@@ -4404,6 +4464,194 @@
       closeTaskPanel();
       await deleteTask(id);
     }
+
+    // ── Date picker ───────────────────────────────────────
+    // The browser draws <input type="date">'s popup itself and CSS cannot
+    // restyle it, so every date field is turned into a button that opens
+    // this picker instead. The original input stays in the page as a
+    // hidden field holding the ISO value (2026-11-25), so all the code
+    // that reads or sets .value keeps working unchanged - setting .value
+    // from code also refreshes the button's label.
+    const DP_MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
+                       'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    const DP_DOW = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+    const DP_VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    let dpPop = null, dpInput = null, dpField = null, dpYear = 0, dpMonth = 0, dpFocus = null;
+
+    function dpParse(v) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? new Date(v + 'T00:00:00') : null;
+    }
+    function dpLabel(v) {
+      const d = dpParse(v);
+      return d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'short' }) : '';
+    }
+
+    function dpEnhance(input) {
+      if (input.dataset.dpReady) return;
+      input.dataset.dpReady = '1';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'd-fi d-date-field';
+      btn.setAttribute('aria-haspopup', 'dialog');
+      btn.innerHTML = '<span class="d-df-text"></span><span class="d-df-icon" aria-hidden="true">&#128197;</span>';
+      input.type = 'hidden';
+      input.parentNode.insertBefore(btn, input);
+      input._dpField = btn;
+
+      // Keep the label in step when other code assigns .value directly
+      Object.defineProperty(input, 'value', {
+        configurable: true,
+        get() { return DP_VALUE.get.call(this); },
+        set(v) { DP_VALUE.set.call(this, v); dpSync(this); },
+      });
+      dpSync(input);
+
+      btn.addEventListener('click', () => (dpInput === input ? dpClose() : dpOpen(input)));
+      btn.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); dpOpen(input); }
+      });
+    }
+
+    function dpSync(input) {
+      const btn = input._dpField;
+      if (!btn) return;
+      const label = dpLabel(DP_VALUE.get.call(input));
+      btn.querySelector('.d-df-text').textContent = label || 'Tarih seç';
+      btn.classList.toggle('empty', !label);
+    }
+
+    function dpOpen(input) {
+      dpClose();
+      if (!dpPop) {
+        dpPop = document.createElement('div');
+        dpPop.className = 'd-dp';
+        dpPop.setAttribute('role', 'dialog');
+        dpPop.setAttribute('aria-label', 'Tarih seç');
+        document.body.appendChild(dpPop);
+        dpPop.addEventListener('mousedown', e => e.preventDefault());  // keep focus where it is
+      }
+      dpInput = input;
+      dpField = input._dpField;
+      const cur = dpParse(input.value) || new Date();
+      dpYear = cur.getFullYear(); dpMonth = cur.getMonth();
+      dpFocus = isoDate(cur);
+      dpField.classList.add('open');
+      dpRender();
+      dpPlace();
+      dpPop.classList.add('open');
+      dpPop.querySelector(`[data-d="${dpFocus}"]`)?.focus({ preventScroll: true });
+    }
+
+    function dpClose(refocus) {
+      if (!dpInput) return;
+      dpPop.classList.remove('open');
+      dpField.classList.remove('open');
+      if (refocus) dpField.focus({ preventScroll: true });
+      dpInput = dpField = null;
+    }
+
+    // Below the field, or above it when there is no room; kept on screen
+    function dpPlace() {
+      const r = dpField.getBoundingClientRect();
+      const w = dpPop.offsetWidth, h = dpPop.offsetHeight, m = 8;
+      let top = r.bottom + 6;
+      if (top + h > window.innerHeight - m && r.top - 6 - h >= m) top = r.top - 6 - h;
+      top = Math.max(m, Math.min(top, window.innerHeight - h - m));
+      const left = Math.max(m, Math.min(r.left, window.innerWidth - w - m));
+      dpPop.style.top = top + 'px';
+      dpPop.style.left = left + 'px';
+    }
+
+    function dpRender() {
+      const sel = dpInput.value, today = isoDate(new Date());
+      const first = new Date(dpYear, dpMonth, 1);
+      const start = new Date(first);
+      start.setDate(1 - ((first.getDay() + 6) % 7));       // weeks start on Monday
+      let cells = '';
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(start); d.setDate(start.getDate() + i);
+        const iso = isoDate(d);
+        const cls = ['d-dp-day', d.getMonth() !== dpMonth && 'other', iso === today && 'today', iso === sel && 'sel']
+          .filter(Boolean).join(' ');
+        cells += `<button type="button" class="${cls}" data-d="${iso}" tabindex="${iso === dpFocus ? 0 : -1}"
+                    aria-label="${dpLabel(iso)}"${iso === sel ? ' aria-selected="true"' : ''}>${d.getDate()}</button>`;
+      }
+      const optional = dpInput.hasAttribute('data-dp-optional');
+      dpPop.innerHTML = `
+        <div class="d-dp-head">
+          <button type="button" class="d-cal-nav" data-nav="-1" aria-label="Önceki ay">&#8249;</button>
+          <span class="d-dp-title">${DP_MONTHS[dpMonth]} ${dpYear}</span>
+          <button type="button" class="d-cal-nav" data-nav="1" aria-label="Sonraki ay">&#8250;</button>
+        </div>
+        <div class="d-dp-grid">${DP_DOW.map(d => `<div class="d-dp-dow">${d}</div>`).join('')}${cells}</div>
+        <div class="d-dp-foot">
+          <button type="button" class="d-dp-btn" data-act="today">Bugün</button>
+          ${optional ? '<button type="button" class="d-dp-btn ghost" data-act="clear">Temizle</button>' : ''}
+        </div>`;
+    }
+
+    function dpMove(deltaMonths) {
+      const d = new Date(dpYear, dpMonth + deltaMonths, 1);
+      dpYear = d.getFullYear(); dpMonth = d.getMonth();
+      const f = dpParse(dpFocus);
+      const keep = new Date(dpYear, dpMonth, Math.min(f.getDate(), new Date(dpYear, dpMonth + 1, 0).getDate()));
+      dpFocus = isoDate(keep);
+      dpRender();
+      dpPop.querySelector(`[data-d="${dpFocus}"]`)?.focus({ preventScroll: true });
+    }
+
+    function dpPick(iso) {
+      const input = dpInput;
+      input.value = iso;                 // refreshes the label via the setter
+      // Fire the events a real date input would, so oninput/onchange run
+      input.dispatchEvent(new Event('input',  { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      dpClose(true);
+    }
+
+    document.addEventListener('click', e => {
+      if (!dpInput) return;
+      const nav = e.target.closest('.d-dp [data-nav]');
+      const day = e.target.closest('.d-dp [data-d]');
+      const act = e.target.closest('.d-dp [data-act]');
+      if (nav) return dpMove(+nav.dataset.nav);
+      if (day) return dpPick(day.dataset.d);
+      if (act) return dpPick(act.dataset.act === 'today' ? isoDate(new Date()) : '');
+      if (!e.target.closest('.d-dp') && e.target !== dpField && !dpField.contains(e.target)) dpClose();
+    });
+
+    // Capture phase, so Escape closes only the picker and not the modal
+    // underneath it (the page-wide Escape handler closes every modal).
+    document.addEventListener('keydown', e => {
+      if (!dpInput) return;
+      const steps = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); dpClose(true); return; }
+      if (e.key === 'Tab') { dpClose(); return; }
+      if (!dpPop.contains(document.activeElement)) return;
+      if (e.key in steps) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        const d = dpParse(dpFocus); d.setDate(d.getDate() + steps[e.key]);
+        dpFocus = isoDate(d);
+        if (d.getMonth() !== dpMonth || d.getFullYear() !== dpYear) { dpYear = d.getFullYear(); dpMonth = d.getMonth(); dpRender(); }
+        else dpPop.querySelectorAll('[data-d]').forEach(b => b.tabIndex = b.dataset.d === dpFocus ? 0 : -1);
+        dpPop.querySelector(`[data-d="${dpFocus}"]`)?.focus({ preventScroll: true });
+      } else if (e.key === 'PageUp' || e.key === 'PageDown') {
+        e.preventDefault(); e.stopImmediatePropagation(); dpMove(e.key === 'PageUp' ? -1 : 1);
+      } else if ((e.key === 'Enter' || e.key === ' ') && document.activeElement.dataset.d) {
+        e.preventDefault(); e.stopImmediatePropagation(); dpPick(document.activeElement.dataset.d);
+      }
+    }, true);
+
+    // Scrolling a modal or resizing moves the field; follow it, or close
+    // if it has left the screen.
+    window.addEventListener('resize', () => dpInput && dpPlace());
+    document.addEventListener('scroll', () => {
+      if (!dpInput) return;
+      const r = dpField.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > window.innerHeight) dpClose(); else dpPlace();
+    }, true);
+
+    document.querySelectorAll('input[type="date"]').forEach(dpEnhance);
 
     // ── Overdue badge ────────────────────────────
     // Counts unfinished tasks from days already past. Today is left out
