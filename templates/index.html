@@ -117,14 +117,14 @@
 
     .tf-acts { margin-top: 4px; }
     .tf-act-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
-    .tf-act-row select, .tf-act-row input {
+    .tf-act-row select, .tf-act-row input, .tf-act-row .ui-sel {
       padding: 8px 10px; background: var(--bg-card);
       border: 1px solid var(--border); border-radius: 8px;
       color: var(--text-primary); font-family: 'Outfit', sans-serif; font-size: .8rem;
       min-width: 0;
     }
     .tf-act-row input { flex: 1; }
-    .tf-act-row select { flex: 1; }
+    .tf-act-row select, .tf-act-row .ui-sel { flex: 1; }
     .tf-act-btn {
       padding: 8px 13px; background: transparent;
       border: 1px dashed var(--border); border-radius: 8px;
@@ -234,6 +234,7 @@
       /* Each control on its own line instead of three squeezed across */
       .tf-act-row { flex-direction: column; align-items: stretch; }
       .tf-act-row select,
+      .tf-act-row .ui-sel,
       .tf-act-row input,
       .tf-act-btn { width: 100%; min-height: 44px; }
 
@@ -821,6 +822,7 @@
     };
   </script>
   <script src="/static/theme.js"></script>
+  <script src="/static/select.js"></script>
   <script>
     if (window.AppTheme) AppTheme.mountThemePicker('themePickerWrap');
   </script>
