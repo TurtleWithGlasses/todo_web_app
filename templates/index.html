@@ -559,10 +559,9 @@
       const { count } = await (await fetch(
         `/task-count?text=${encodeURIComponent(oldText)}`)).json();
       if (count > 1) {
-        const ok = confirm(
-          `"${oldText}" gorevinin ${count} ayindaki kaydi "${newText}" olarak degisecek.\n\n` +
-          `Yalnizca bu aydan itibaren degistirmek istiyorsan, gecmis panelinden "ayir" kullan.\n\n` +
-          `Devam edilsin mi?`);
+        const ok = await uiConfirm({ title: 'Görevi yeniden adlandır', ok: 'Yeniden adlandır',
+          message: `"${oldText}" görevinin ${count} aydaki kaydı "${newText}" olarak değişecek.\n\n` +
+                   `Yalnızca bu aydan itibaren değiştirmek istiyorsan, geçmiş panelindeki "ayır" seçeneğini kullan.` });
         if (!ok) { el.value = oldText; return; }
       }
 
@@ -596,7 +595,8 @@
     }
 
     async function resetAll() {
-      if (confirm('Reset all task statuses? This will uncheck all tasks.')) {
+      if (await uiConfirm({ title: 'Reset all', ok: 'Reset', cancel: 'Cancel', danger: true,
+            message: 'Reset all task statuses for this month? This will uncheck every task.' })) {
         await fetch("/reset", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -764,7 +764,8 @@
       const name = document.getElementById('tfSplitName').value.trim();
       if (!id || !name) { document.getElementById('tfSplitName').focus(); return; }
       const m = tfCurrent.months.find(x => String(x.id) === String(id));
-      if (!confirm(`${fmtMonth(m.month)} ve sonrasindaki kayitlar "${name}" adiyla ayrilacak.\n\nDevam edilsin mi?`)) return;
+      if (!(await uiConfirm({ title: 'Görevi ayır', ok: 'Ayır',
+            message: `${fmtMonth(m.month)} ve sonrasındaki kayıtlar "${name}" adıyla ayrılacak.` }))) return;
 
       const res = await fetch(`/task-split/${id}`, {
         method: 'POST',
@@ -772,7 +773,7 @@
         body: JSON.stringify({ new_text: name, include_later: true }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!data.success) { alert('Ayırma başarısız.'); return; }
+      if (!data.success) { await uiAlert({ title: 'Ayırma başarısız', message: 'Görev ayrılamadı, lütfen tekrar dene.' }); return; }
       closeTaskHistory();
       await loadTasks();
     }
@@ -784,7 +785,8 @@
       const all = await (await fetch('/task-entities')).json();
       const target = all.find(e => e.key === targetKey);
       if (!target) return;
-      if (!confirm(`"${tfCurrent.text}" gorevinin tum aylari "${target.text}" adiyla birlestirilecek.\n\nDevam edilsin mi?`)) return;
+      if (!(await uiConfirm({ title: 'Görevleri birleştir', ok: 'Birleştir',
+            message: `"${tfCurrent.text}" görevinin tüm ayları "${target.text}" adıyla birleştirilecek.` }))) return;
 
       const res = await fetch('/task-rename', {
         method: 'POST',
@@ -792,7 +794,7 @@
         body: JSON.stringify({ old_text: tfCurrent.text, new_text: target.text }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!data.success) { alert('Birleştirme başarısız.'); return; }
+      if (!data.success) { await uiAlert({ title: 'Birleştirme başarısız', message: 'Görevler birleştirilemedi, lütfen tekrar dene.' }); return; }
       closeTaskHistory();
       await loadTasks();
     }
@@ -823,6 +825,7 @@
   </script>
   <script src="/static/theme.js"></script>
   <script src="/static/select.js"></script>
+  <script src="/static/dialog.js"></script>
   <script>
     if (window.AppTheme) AppTheme.mountThemePicker('themePickerWrap');
   </script>

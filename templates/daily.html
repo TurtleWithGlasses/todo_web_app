@@ -3022,6 +3022,7 @@
 
   <script src="/static/theme.js"></script>
   <script src="/static/select.js"></script>
+  <script src="/static/dialog.js"></script>
   <script>
     // ── State ────────────────────────────────────────────
     let currentDate    = new Date();
@@ -3716,15 +3717,17 @@
         });
         const renaming = title !== orig.title;
         if (!Object.keys(changed).length && !renaming) {
-          alert('Değiştirilmiş bir alan yok. Önce açıklama, saat, kategori ya da önceliği değiştir.');
+          await uiAlert({ title: 'Değişiklik yok',
+            message: 'Değiştirilmiş bir alan yok. Önce açıklama, saat, kategori ya da önceliği değiştir.' });
           return;
         }
         const { count } = await (await fetch(
           `/daily/task-count?title=${encodeURIComponent(orig.title)}`)).json();
         const parts = Object.keys(changed).map(k => FIELD_LABEL[k]);
         if (renaming) parts.unshift('ad');
-        if (!confirm(`"${orig.title}" görevinin ${count} kaydının tamamında ` +
-                     `${parts.join(', ')} değiştirilecek.\n\nTarihler ve durumlar aynı kalır.\n\nDevam edilsin mi?`)) return;
+        if (!(await uiConfirm({ title: 'Tüm öğeleri değiştir', ok: 'Değiştir',
+              message: `"${orig.title}" görevinin ${count} kaydının tamamında ` +
+                       `${parts.join(', ')} değiştirilecek.\n\nTarihler ve durumlar aynı kalır.` }))) return;
         await fetch(`/daily/edit/${editingTaskId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3743,9 +3746,8 @@
           const cRes = await fetch(`/daily/task-count?title=${encodeURIComponent(orig.title)}`);
           const { count } = await cRes.json();
           if (count > 1) {
-            const ok = confirm(
-              `"${orig.title}" gorevinin ${count} kaydinin tamami "${title}" olarak degistirilecek.\n\n` +
-              `Devam edilsin mi?`);
+            const ok = await uiConfirm({ title: 'Görevi yeniden adlandır', ok: 'Yeniden adlandır',
+              message: `"${orig.title}" görevinin ${count} kaydının tamamı "${title}" olarak değiştirilecek.` });
             if (!ok) return;
           }
         }
@@ -4317,18 +4319,19 @@
       const newTitle = document.getElementById('fTitle').value.trim();
       if (!orig || !newTitle) { document.getElementById('fTitle').focus(); return; }
       if (newTitle === orig.title) {
-        alert('Ayırmak için önce başlığa yeni bir ad yaz.');
+        await uiAlert({ title: 'Yeni ad gerekli', message: 'Ayırmak için önce başlığa yeni bir ad yaz.' });
         document.getElementById('fTitle').focus();
         return;
       }
 
       // Name the item by date and time: a split is per occurrence now,
       // and one day can hold several of the same task.
-      const item = `${fmtLongDate(orig.date)}${orig.time ? ' ' + orig.time : ''} kaydi`;
+      const item = `${fmtLongDate(orig.date)}${orig.time ? ' ' + orig.time : ''} kaydı`;
       const scope = includeLater
-        ? `${item} ve sonraki kayitlar`
-        : `sadece ${item}`;
-      if (!confirm(`${scope} "${newTitle}" adiyla ayri bir gorev olacak.\n\nDevam edilsin mi?`)) return;
+        ? `${item} ve sonraki kayıtlar`
+        : `Yalnızca ${item}`;
+      if (!(await uiConfirm({ title: 'Görevi ayır', ok: 'Ayır',
+            message: `${scope} "${newTitle}" adıyla ayrı bir görev olacak.` }))) return;
 
       const res = await fetch(`/daily/task-split/${editingTaskId}`, {
         method: 'POST',
@@ -4336,7 +4339,7 @@
         body: JSON.stringify({ new_title: newTitle, include_later: includeLater }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!data.success) { alert('Ayırma başarısız.'); return; }
+      if (!data.success) { await uiAlert({ title: 'Ayırma başarısız', message: 'Görev ayrılamadı, lütfen tekrar dene.' }); return; }
 
       closeModal();
       await loadTasks();
@@ -4460,7 +4463,8 @@
     async function tpDelete() {
       const t = allTasks.find(x => x.id === panelTaskId);
       if (!t) return;
-      if (!confirm(`"${t.title}" bu tarihten silinecek.\n\nDevam edilsin mi?`)) return;
+      if (!(await uiConfirm({ title: 'Görevi sil', ok: 'Sil', danger: true,
+            message: `"${t.title}" bu tarihten silinecek.` }))) return;
       const id = panelTaskId;
       closeTaskPanel();
       await deleteTask(id);
@@ -4914,7 +4918,8 @@
       const o = srchOcc.find(x => x.id === srchSelId);
       if (!o) return;
       if (kind === 'delete' &&
-          !confirm(`"${o.title}" ${fmtLongDate(o.date)}${o.time ? ' ' + o.time : ''} kaydi silinecek.\n\nDevam edilsin mi?`)) return;
+          !(await uiConfirm({ title: 'Kaydı sil', ok: 'Sil', danger: true,
+              message: `"${o.title}" — ${fmtLongDate(o.date)}${o.time ? ' ' + o.time : ''} kaydı silinecek.` }))) return;
 
       closeSearch();
       currentDate = new Date(o.date + 'T00:00:00');
@@ -4998,9 +5003,10 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!data.success) {
-        alert(data.error === 'invalid link (would create a cycle)'
-          ? 'Bu bağ döngü oluşturur — bir görev kendi revizyonunun revizyonu olamaz.'
-          : 'Bağ kurulamadı.');
+        await uiAlert({ title: 'Bağ kurulamadı',
+          message: data.error === 'invalid link (would create a cycle)'
+            ? 'Bu bağ döngü oluşturur — bir görev kendi revizyonunun revizyonu olamaz.'
+            : 'Revizyon bağı kaydedilemedi, lütfen tekrar dene.' });
       }
       if (srchActive) selectEntity(encodeURIComponent(srchActive));
     }
@@ -5029,9 +5035,9 @@
       const source = srchEntities.find(e => e.key === srchActive);
       if (!target || !source) return;
 
-      const ok = confirm(
-        `"${source.title}" gorevinin ${source.total} kaydi "${target.title}" adiyla birlestirilecek.\n\n` +
-        `Sonucta ${source.total + target.total} kayitli tek bir gorev kalacak. Devam edilsin mi?`);
+      const ok = await uiConfirm({ title: 'Görevleri birleştir', ok: 'Birleştir',
+        message: `"${source.title}" görevinin ${source.total} kaydı "${target.title}" adıyla birleştirilecek.\n\n` +
+                 `Sonuçta ${source.total + target.total} kayıtlı tek bir görev kalacak.` });
       if (!ok) return;
 
       const res = await fetch('/daily/task-rename', {
@@ -5040,7 +5046,7 @@
         body: JSON.stringify({ old_title: source.title, new_title: target.title }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!data.success) { alert('Birleştirme başarısız.'); return; }
+      if (!data.success) { await uiAlert({ title: 'Birleştirme başarısız', message: 'Görevler birleştirilemedi, lütfen tekrar dene.' }); return; }
 
       srchActive = null;
       await runSearch();
@@ -5583,7 +5589,7 @@
         else if (fmt === 'word')  exportWord();
         else if (fmt === 'pdf')   await exportPdf();
       } catch (err) {
-        alert('Dışa aktarma başarısız: ' + err.message);
+        await uiAlert({ title: 'Dışa aktarma başarısız', message: err.message });
       } finally {
         btn.disabled = false;
       }
@@ -6340,7 +6346,8 @@
       if (!groupId || !afterDate) return;
       const label = new Date(afterDate + 'T00:00:00')
         .toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-      if (!confirm(`${label} tarihinden SONRAKİ tüm tekrarlar silinecek.\nBu tarihteki görev ve öncesi kalacak.\n\nDevam edilsin mi?`)) return;
+      if (!(await uiConfirm({ title: 'Sonraki tekrarları sil', ok: 'Sil', danger: true,
+            message: `${label} tarihinden SONRAKİ tüm tekrarlar silinecek.\nBu tarihteki görev ve öncesi kalacak.` }))) return;
       const res = await fetch(
         `/daily/repeat-group/${groupId}?after=${encodeURIComponent(afterDate)}`,
         { method: 'DELETE' }
